@@ -1,3 +1,9 @@
+export type InvestigationStatus =
+  | "open"
+  | "in_review"
+  | "escalated"
+  | "closed";
+
 export interface NetworkCase {
   id: string;
   case_name: string;
@@ -10,4 +16,6 @@ export interface NetworkCase {
   graph_snapshot_path: string | null;
   created_at: string;
   wallets?: string[];
+  /** UI: investigation workflow */
+  status?: InvestigationStatus;
 }

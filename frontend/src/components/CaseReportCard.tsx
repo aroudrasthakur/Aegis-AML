@@ -1,21 +1,20 @@
-import type { NetworkCase } from "../types/network";
-import { formatCurrency, formatDate, formatNumber } from "../utils/formatters";
+import type { NetworkCase } from "@/types/network";
+import { formatCurrency, formatDate, formatNumber } from "@/utils/formatters";
 
 export interface CaseReportCardProps {
   case: NetworkCase;
 }
 
 function riskBarColor(score: number): string {
-  if (score >= 0.75) return "bg-red-500";
-  if (score >= 0.5) return "bg-orange-500";
-  if (score >= 0.25) return "bg-yellow-500";
-  return "bg-green-500";
+  if (score >= 0.75) return "bg-[var(--color-aegis-red)]";
+  if (score >= 0.5) return "bg-[var(--color-aegis-amber)]";
+  if (score >= 0.25) return "bg-[#fbbf24]";
+  return "bg-[var(--color-aegis-green)]";
 }
 
 export default function CaseReportCard({ case: networkCase }: CaseReportCardProps) {
   const risk = networkCase.risk_score ?? null;
-  const riskPct =
-    risk == null ? 0 : Math.min(100, Math.max(0, risk * 100));
+  const riskPct = risk == null ? 0 : Math.min(100, Math.max(0, risk * 100));
 
   const excerptSource = networkCase.explanation ?? "";
   const excerpt =
@@ -31,37 +30,44 @@ export default function CaseReportCard({ case: networkCase }: CaseReportCardProp
     : "—";
 
   return (
-    <article className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-gray-100">
+    <article className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-6 text-[#e6edf3]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="font-display text-lg font-semibold text-[#e6edf3]">
             {networkCase.case_name}
           </h2>
           <div className="mt-2 flex flex-wrap gap-2">
             {networkCase.typology ? (
-              <span className="inline-flex rounded-md border border-blue-800 bg-blue-950/50 px-2 py-0.5 text-xs font-medium text-blue-200">
+              <span className="inline-flex rounded-md border border-[var(--color-aegis-purple)]/40 bg-[#7c5cfc]/10 px-2 py-0.5 font-data text-xs font-medium text-[#c4b5fd]">
                 {networkCase.typology}
               </span>
             ) : (
-              <span className="text-xs text-gray-500">No typology</span>
+              <span className="font-data text-xs text-[var(--color-aegis-muted)]">
+                No typology
+              </span>
+            )}
+            {networkCase.status && (
+              <span className="rounded border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-0.5 font-data text-[10px] uppercase text-[#9aa7b8]">
+                {networkCase.status.replace(/_/g, " ")}
+              </span>
             )}
           </div>
         </div>
       </div>
 
       <div className="mt-6">
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="text-gray-400">Risk score</span>
+        <div className="flex items-center justify-between gap-2 font-data text-sm">
+          <span className="text-[var(--color-aegis-muted)]">Risk score</span>
           {risk == null ? (
-            <span className="text-gray-500">—</span>
+            <span className="text-[var(--color-aegis-muted)]">—</span>
           ) : (
-            <span className="tabular-nums text-gray-200">
+            <span className="tabular-nums text-[#e6edf3]">
               {formatNumber(risk, 2)}
             </span>
           )}
         </div>
         {risk != null && (
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-800">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#060810]">
             <div
               className={`h-full rounded-full ${riskBarColor(risk)}`}
               style={{ width: `${riskPct}%` }}
@@ -70,33 +76,41 @@ export default function CaseReportCard({ case: networkCase }: CaseReportCardProp
         )}
       </div>
 
-      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="mt-6 grid gap-3 font-data text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-gray-500">Total amount</dt>
-          <dd className="mt-0.5 tabular-nums text-gray-200">
+          <dt className="text-[var(--color-aegis-muted)]">Total amount</dt>
+          <dd className="mt-0.5 tabular-nums text-[#e6edf3]">
             {networkCase.total_amount == null
               ? "—"
               : formatCurrency(networkCase.total_amount)}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-500">Time range</dt>
-          <dd className="mt-0.5 text-gray-200">
+          <dt className="text-[var(--color-aegis-muted)]">Time range</dt>
+          <dd className="mt-0.5 text-[#c8d4e0]">
             {rangeStart} → {rangeEnd}
           </dd>
         </div>
       </dl>
 
       {excerpt && (
-        <p className="mt-6 text-sm leading-relaxed text-gray-400">{excerpt}</p>
+        <p className="mt-6 font-data text-sm leading-relaxed text-[#9aa7b8]">
+          {excerpt}
+        </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap gap-2">
         <button
           type="button"
-          className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-100 hover:border-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600/40"
+          className="rounded-lg border border-[var(--color-aegis-border)] bg-[#060810] px-4 py-2 font-data text-sm font-medium text-[#e6edf3] hover:border-[var(--color-aegis-green)]/40"
         >
-          View Details
+          View details
+        </button>
+        <button
+          type="button"
+          className="rounded-lg border border-[var(--color-aegis-green)]/30 bg-[#00e5a0]/10 px-4 py-2 font-data text-sm text-[var(--color-aegis-green)]"
+        >
+          Download report
         </button>
       </div>
     </article>

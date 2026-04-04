@@ -1,4 +1,4 @@
-import { Download, FileText } from "lucide-react";
+import { Download, FileJson, FileText } from "lucide-react";
 
 export default function ReportsPage() {
   const reports: {
@@ -9,53 +9,82 @@ export default function ReportsPage() {
   }[] = [];
 
   return (
-    <div className="px-8 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-white">Investigation Reports</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
+            Reports & SAR
+          </h1>
+          <p className="font-data text-sm text-[var(--color-aegis-muted)]">
+            Case reports, SAR generation, JSON / PDF export
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-4 py-2 font-data text-xs text-[#e6edf3] hover:border-[var(--color-aegis-green)]/40"
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+            Generate SAR
+          </button>
+        </div>
+      </div>
 
-      <div className="rounded-xl bg-gray-900 border border-gray-800 overflow-hidden">
+      <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-800 bg-gray-950/40">
-                <th className="px-4 py-3 font-medium">Report Title</th>
-                <th className="px-4 py-3 font-medium">Case</th>
-                <th className="px-4 py-3 font-medium">Generated At</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+              <tr className="border-b border-[var(--color-aegis-border)] bg-[#060810]/80 text-left font-data text-[11px] uppercase tracking-wide text-[var(--color-aegis-muted)]">
+                <th className="px-4 py-3">Report</th>
+                <th className="px-4 py-3">Case</th>
+                <th className="px-4 py-3">Generated</th>
+                <th className="px-4 py-3">Export</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800 text-gray-300">
+            <tbody className="divide-y divide-[var(--color-aegis-border)] font-data text-[#c8d4e0]">
               {reports.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-16 text-center">
                     <FileText
-                      className="h-10 w-10 text-gray-600 mx-auto mb-3"
+                      className="mx-auto mb-3 h-10 w-10 text-[var(--color-aegis-muted)]"
                       aria-hidden
                     />
-                    <p className="text-gray-400 font-medium">
+                    <p className="font-display font-medium text-[#c8d4e0]">
                       No reports generated
                     </p>
-                    <p className="text-gray-500 text-sm mt-2 max-w-sm mx-auto">
-                      Export or generate investigation reports to list them
+                    <p className="mx-auto mt-2 max-w-sm text-sm text-[#9aa7b8]">
+                      Generate SAR or export investigation packages to list them
                       here.
                     </p>
                   </td>
                 </tr>
               ) : (
                 reports.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-800/40">
-                    <td className="px-4 py-3 text-white font-medium">
+                  <tr key={r.id} className="hover:bg-[#060810]/90">
+                    <td className="px-4 py-3 font-medium text-[#e6edf3]">
                       {r.title}
                     </td>
                     <td className="px-4 py-3">{r.caseName}</td>
-                    <td className="px-4 py-3 text-gray-400">{r.generatedAt}</td>
+                    <td className="px-4 py-3 text-[var(--color-aegis-muted)]">
+                      {r.generatedAt}
+                    </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 hover:bg-gray-700 hover:border-gray-600 transition-colors"
-                      >
-                        <Download className="h-3.5 w-3.5" aria-hidden />
-                        Download
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1 text-[11px] text-[#e6edf3] hover:border-[var(--color-aegis-green)]/40"
+                        >
+                          <FileJson className="h-3.5 w-3.5" aria-hidden />
+                          JSON
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1 text-[11px] text-[#e6edf3] hover:border-[var(--color-aegis-green)]/40"
+                        >
+                          <Download className="h-3.5 w-3.5" aria-hidden />
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

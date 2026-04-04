@@ -1,88 +1,123 @@
-import { useMemo } from "react";
-import Plot from "react-plotly.js";
-import type { Data, Layout } from "plotly.js";
-
-export interface LensRadarScores {
-  behavioral: number;
-  graph: number;
-  entity: number;
-  temporal: number;
-  offramp: number;
-}
+import type { LensScores6 } from "@/types/dashboard";
 
 export interface LensRadarChartProps {
-  scores: LensRadarScores;
+  scores: LensScores6;
+  size?: number;
 }
 
-const LABELS = [
-  "Behavioral",
-  "Graph",
-  "Entity",
-  "Temporal",
-  "Off-ramp",
-] as const;
+const LABELS: { key: keyof LensScores6; label: string }[] = [
+  { key: "behavioral", label: "Behavioral" },
+  { key: "graph", label: "Graph" },
+  { key: "entity", label: "Entity" },
+  { key: "temporal", label: "Temporal" },
+  { key: "document", label: "Document" },
+  { key: "offramp", label: "Off-ramp" },
+];
 
-const PLOT_BG = "#111827";
-const TEXT = "#f3f4f6";
-const GRID = "#374151";
+/** Hexagonal radar: 6 axes, SVG only (no Plotly). */
+export default function LensRadarChart({
+  scores,
+  size = 220,
+}: LensRadarChartProps) {
+  const cx = size / 2;
+  const cy = size / 2 + 8;
+  const rMax = size * 0.36;
+  const n = 6;
+  const points: string[] = [];
+  const labelPos: { x: number; y: number; text: string }[] = [];
 
-export default function LensRadarChart({ scores }: LensRadarChartProps) {
-  const { data, layout } = useMemo(() => {
-    const r = [
-      scores.behavioral,
-      scores.graph,
-      scores.entity,
-      scores.temporal,
-      scores.offramp,
-    ];
-    const theta = [...LABELS, LABELS[0]];
-    const rClosed = [...r, r[0]];
+  for (let i = 0; i < n; i++) {
+    const angle = (-Math.PI / 2 + (i * 2 * Math.PI) / n) as number;
+    const v = Math.max(0, Math.min(1, scores[LABELS[i].key]));
+    const r = rMax * v;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    points.push(`${x},${y}`);
 
-    const trace: Partial<Data> = {
-      type: "scatterpolar",
-      r: rClosed,
-      theta,
-      fill: "toself",
-      fillcolor: "rgba(59, 130, 246, 0.25)",
-      line: { color: "#3b82f6", width: 2 },
-      marker: { color: "#60a5fa", size: 6 },
-    };
+    const lr = rMax + 22;
+    labelPos.push({
+      x: cx + lr * Math.cos(angle),
+      y: cy + lr * Math.sin(angle),
+      text: LABELS[i].label,
+    });
+  }
 
-    const plotLayout: Partial<Layout> = {
-      paper_bgcolor: PLOT_BG,
-      plot_bgcolor: PLOT_BG,
-      font: { color: TEXT, family: "system-ui, sans-serif", size: 11 },
-      margin: { l: 48, r: 48, t: 32, b: 32 },
-      polar: {
-        bgcolor: PLOT_BG,
-        radialaxis: {
-          visible: true,
-          range: [0, 1],
-          gridcolor: GRID,
-          linecolor: GRID,
-          tickfont: { color: TEXT },
-        },
-        angularaxis: {
-          tickfont: { color: TEXT },
-          linecolor: GRID,
-          gridcolor: GRID,
-        },
-      },
-      showlegend: false,
-    };
+  const gridRings = [0.25, 0.5, 0.75, 1].map((t) => (
+    <polygon
+      key={t}
+      fill="none"
+      stroke="rgba(255,255,255,0.08)"
+      strokeWidth={1}
+      points={Array.from({ length: n }, (_, i) => {
+        const angle = (-Math.PI / 2 + (i * 2 * Math.PI) / n) as number;
+        const r = rMax * t;
+        return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+      }).join(" ")}
+    />
+  ));
 
-    return { data: [trace], layout: plotLayout };
-  }, [scores]);
+  const spokes = LABELS.map((_, i) => {
+    const angle = (-Math.PI / 2 + (i * 2 * Math.PI) / n) as number;
+    const x2 = cx + rMax * Math.cos(angle);
+    const y2 = cy + rMax * Math.sin(angle);
+    return (
+      <line
+        key={i}
+        x1={cx}
+        y1={cy}
+        x2={x2}
+        y2={y2}
+        stroke="rgba(255,255,255,0.06)"
+        strokeWidth={1}
+      />
+    );
+  });
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-2 text-gray-100">
-      <Plot
-        data={data}
-        layout={layout}
-        config={{ displayModeBar: false, responsive: true }}
-        style={{ width: "100%", height: 360 }}
-        useResizeHandler
-      />
+    <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-4">
+      <p className="mb-2 font-data text-[10px] uppercase tracking-wider text-[var(--color-aegis-muted)]">
+        Lens radar
+      </p>
+      <svg
+        width={size}
+        height={size + 16}
+        viewBox={`0 0 ${size} ${size + 16}`}
+        className="mx-auto block"
+        role="img"
+        aria-label="Six lens scores radar chart"
+      >
+        <defs>
+          <filter id="radarGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {gridRings}
+        {spokes}
+        <polygon
+          fill="rgba(0, 229, 160, 0.12)"
+          stroke="var(--color-aegis-green)"
+          strokeWidth={1.5}
+          points={points.join(" ")}
+          filter="url(#radarGlow)"
+        />
+        {labelPos.map((p) => (
+          <text
+            key={p.text}
+            x={p.x}
+            y={p.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="fill-[#9aa7b8] font-data"
+            style={{ fontSize: 9 }}
+          >
+            {p.text}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }

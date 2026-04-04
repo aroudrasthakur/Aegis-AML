@@ -1,22 +1,22 @@
 import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
-import type { Transaction } from "../types/transaction";
+import type { Transaction } from "@/types/transaction";
 
 export interface FlowTimelineProps {
   transactions: Transaction[];
 }
 
-const PLOT_BG = "#111827";
-const TEXT = "#f3f4f6";
-const GRID = "#374151";
+const PLOT_BG = "#0d1117";
+const TEXT = "#9aa7b8";
+const GRID = "rgba(255,255,255,0.06)";
 
 function riskToColor(score: number | null | undefined): string {
-  if (score == null) return "#6b7280";
-  if (score >= 0.75) return "#ef4444";
-  if (score >= 0.5) return "#f97316";
-  if (score >= 0.25) return "#eab308";
-  return "#22c55e";
+  if (score == null) return "#5c6b7f";
+  if (score >= 0.75) return "#ff4d6d";
+  if (score >= 0.5) return "#f59e0b";
+  if (score >= 0.25) return "#fbbf24";
+  return "#00e5a0";
 }
 
 export default function FlowTimeline({ transactions }: FlowTimelineProps) {
@@ -37,14 +37,14 @@ export default function FlowTimeline({ transactions }: FlowTimelineProps) {
       marker: {
         size: 10,
         color: colors,
-        line: { color: "#1f2937", width: 1 },
+        line: { color: "#060810", width: 1 },
       },
     };
 
     const plotLayout: Partial<Layout> = {
       paper_bgcolor: PLOT_BG,
       plot_bgcolor: PLOT_BG,
-      font: { color: TEXT, family: "system-ui, sans-serif", size: 12 },
+      font: { color: TEXT, family: "DM Mono, monospace", size: 11 },
       margin: { l: 56, r: 24, t: 24, b: 48 },
       xaxis: {
         title: { text: "Timestamp" },
@@ -53,7 +53,7 @@ export default function FlowTimeline({ transactions }: FlowTimelineProps) {
         showgrid: true,
       },
       yaxis: {
-        title: { text: "Amount (USD)" },
+        title: { text: "Amount" },
         gridcolor: GRID,
         zerolinecolor: GRID,
         tickprefix: "$",
@@ -66,14 +66,14 @@ export default function FlowTimeline({ transactions }: FlowTimelineProps) {
 
   if (transactions.length === 0) {
     return (
-      <div className="flex min-h-[360px] items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-gray-500">
+      <div className="flex min-h-[360px] items-center justify-center rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] font-data text-sm text-[var(--color-aegis-muted)]">
         No transactions for timeline.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-2 text-gray-100">
+    <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-2">
       <Plot
         data={data}
         layout={layout}

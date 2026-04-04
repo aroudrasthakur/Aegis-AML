@@ -19,15 +19,15 @@ function environmentForId(id: number): EnvGroup {
 function badgeClasses(env: EnvGroup): string {
   switch (env) {
     case "traditional":
-      return "border-amber-700/80 bg-amber-950/40 text-amber-200";
+      return "border-[var(--color-aegis-amber)]/50 bg-[#f59e0b]/10 text-[#fcd34d]";
     case "blockchain":
-      return "border-blue-700/80 bg-blue-950/40 text-blue-200";
+      return "border-[#38bdf8]/40 bg-[#38bdf8]/10 text-[#7dd3fc]";
     case "hybrid":
-      return "border-purple-700/80 bg-purple-950/40 text-purple-200";
+      return "border-[var(--color-aegis-purple)]/50 bg-[#7c5cfc]/10 text-[#c4b5fd]";
     case "ai_enabled":
-      return "border-red-700/80 bg-red-950/40 text-red-200";
+      return "border-[var(--color-aegis-red)]/45 bg-[#ff4d6d]/10 text-[#fda4af]";
     default:
-      return "border-gray-700 bg-gray-800 text-gray-300";
+      return "border-[var(--color-aegis-border)] bg-[#060810] text-[#c8d4e0]";
   }
 }
 
@@ -47,7 +47,9 @@ export default function HeuristicBadges({
 
   if (uniqueSorted.length === 0) {
     return (
-      <p className="text-sm text-gray-500">No heuristics triggered.</p>
+      <p className="font-data text-sm text-[var(--color-aegis-muted)]">
+        No heuristics triggered.
+      </p>
     );
   }
 
@@ -62,7 +64,7 @@ export default function HeuristicBadges({
             <span
               key={id}
               title={tip}
-              className={`inline-flex cursor-default rounded-md border px-2 py-0.5 text-xs font-medium tabular-nums ${badgeClasses(env)}`}
+              className={`inline-flex cursor-default rounded-md border px-2 py-0.5 font-data text-xs font-medium tabular-nums ${badgeClasses(env)}`}
             >
               H-{id}
             </span>
@@ -73,7 +75,7 @@ export default function HeuristicBadges({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="self-start text-xs font-medium text-blue-400 hover:text-blue-300"
+          className="self-start font-data text-xs font-medium text-[var(--color-aegis-green)] hover:underline"
         >
           Show more ({hiddenCount})
         </button>

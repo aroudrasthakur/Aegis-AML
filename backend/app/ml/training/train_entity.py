@@ -13,7 +13,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, classification_report
 from sklearn.model_selection import train_test_split
-from xgboost import XGBClassifier
+from xgboost import DMatrix, XGBClassifier
+from xgboost.callback import TrainingCallback
 
 from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import fit_xgboost_classifier, log_device_banner, xgboost_fit_kwargs
@@ -143,6 +144,36 @@ def _assign_cluster_labels(
     return cluster_df
 
 
+class _EntityEpochLogger(TrainingCallback):
+    """Log every boosting round with val PR-AUC (same idea as graph per-epoch logs)."""
+
+    def __init__(
+        self,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+        n_estimators: int,
+        log,
+    ) -> None:
+        self._X_val = X_val
+        self._y_val = y_val
+        self._n_estimators = int(n_estimators)
+        self._log = log
+
+    def after_iteration(self, model, epoch, evals_log) -> bool:
+        current = epoch + 1
+        # XGBoost passes a Booster here, not XGBClassifier — no predict_proba.
+        preds = np.asarray(model.predict(DMatrix(self._X_val)))
+        y_prob = preds[:, 1] if preds.ndim == 2 and preds.shape[1] > 1 else preds.ravel()
+        val_ap = average_precision_score(self._y_val, y_prob)
+        self._log.info(
+            "Entity XGBoost epoch %d/%d  val_PR-AUC=%.4f",
+            current,
+            self._n_estimators,
+            val_ap,
+        )
+        return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train Entity Lens classifier")
     parser.add_argument("--data-dir", default="data/processed", help="Directory with preprocessed data")
@@ -178,7 +209,18 @@ def main() -> None:
         use_label_encoder=False,
         **xgboost_fit_kwargs(),
     )
-    model = fit_xgboost_classifier(model, X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+    n_est = int(model.get_params().get("n_estimators") or 200)
+    entity_cb = _EntityEpochLogger(X_val, y_val, n_est, logger)
+    existing = list(model.callbacks or [])
+    model.set_params(callbacks=existing + [entity_cb])
+    model = fit_xgboost_classifier(
+        model,
+        X_train,
+        y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False,
+        log_period=0,
+    )
 
     y_prob = model.predict_proba(X_val)[:, 1]
     pr_auc = average_precision_score(y_val, y_prob)

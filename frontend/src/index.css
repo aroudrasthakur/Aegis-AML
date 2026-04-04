@@ -1,1 +1,79 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --color-aegis-bg: #060810;
+  --color-aegis-surface: #0d1117;
+  --color-aegis-border: rgba(255, 255, 255, 0.08);
+  --color-aegis-green: #00e5a0;
+  --color-aegis-red: #ff4d6d;
+  --color-aegis-purple: #7c5cfc;
+  --color-aegis-amber: #f59e0b;
+  --color-aegis-muted: #8b9cb3;
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+    font-family: var(--font-display);
+    background-color: var(--color-aegis-bg);
+    color: #e6edf3;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  .font-data {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Grid background utility */
+.aegis-grid {
+  background-color: var(--color-aegis-bg);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Radial glow (accents only) */
+.aegis-glow-green {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    rgba(0, 229, 160, 0.12),
+    transparent 55%
+  );
+}
+
+.aegis-glow-purple {
+  background: radial-gradient(
+    ellipse 70% 50% at 80% 20%,
+    rgba(124, 92, 252, 0.1),
+    transparent 50%
+  );
+}
+
+/* Ticker marquee */
+@keyframes aegis-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.aegis-ticker-track {
+  animation: aegis-marquee 45s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aegis-ticker-track {
+    animation: none;
+  }
+}

@@ -11,13 +11,16 @@ import type { CytoscapeElement } from "../types/graph";
 export interface NetworkGraphProps {
   elements: CytoscapeElement[];
   onNodeClick?: (id: string) => void;
+  /** Default 420 */
+  minHeight?: number;
 }
 
-const DARK_BG = "#111827";
+const DARK_BG = "#060810";
 
 export default function NetworkGraph({
   elements,
   onNodeClick,
+  minHeight = 420,
 }: NetworkGraphProps) {
   const [cyInstance, setCyInstance] = useState<Core | null>(null);
   const onNodeClickRef = useRef(onNodeClick);
@@ -78,8 +81,8 @@ export default function NetworkGraph({
 
   return (
     <div
-      className="h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-800 bg-gray-900"
-      style={{ backgroundColor: DARK_BG }}
+      className="h-full w-full overflow-hidden rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117]"
+      style={{ backgroundColor: DARK_BG, minHeight }}
     >
       <CytoscapeComponent
         elements={CytoscapeComponent.normalizeElements(
@@ -87,7 +90,7 @@ export default function NetworkGraph({
         )}
         stylesheet={stylesheet}
         layout={layout}
-        style={{ width: "100%", height: "100%", minHeight: 420 }}
+        style={{ width: "100%", height: "100%", minHeight }}
         cy={(cy) => setCyInstance(cy)}
         wheelSensitivity={0.2}
       />

@@ -1,78 +1,90 @@
-import { AlertTriangle, Loader2, Network } from "lucide-react";
-import { useNetworkCases } from "../hooks/useNetworkCases";
-import { formatNumber } from "../utils/formatters";
+import { Loader2, Network } from "lucide-react";
+import { useNetworkCases } from "@/hooks/useNetworkCases";
+import CaseReportCard from "@/components/CaseReportCard";
+import NetworkGraph from "@/components/NetworkGraph";
+import type { CytoscapeElement } from "@/types/graph";
+
+function previewForCase(id: string): CytoscapeElement[] {
+  const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return [
+    { data: { id: `${id}-a`, label: "A", color: "#00e5a0" } },
+    { data: { id: `${id}-b`, label: "B", color: "#7c5cfc" } },
+    { data: { id: `${id}-c`, label: "C", color: "#f59e0b" } },
+    {
+      data: {
+        id: `${id}-e1`,
+        source: `${id}-a`,
+        target: `${id}-b`,
+        weight: 100000 + seed * 100,
+      },
+    },
+    {
+      data: {
+        id: `${id}-e2`,
+        source: `${id}-b`,
+        target: `${id}-c`,
+        weight: 50000,
+      },
+    },
+  ];
+}
 
 export default function NetworkCasesPage() {
   const { cases, loading, error } = useNetworkCases();
 
   return (
-    <div className="px-8 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-white">Network Cases</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
+          Network cases
+        </h1>
+        <p className="font-data text-sm text-[var(--color-aegis-muted)]">
+          Case cards with graph preview and investigation status
+        </p>
+      </div>
 
       {loading && (
-        <div className="rounded-xl bg-gray-900 border border-gray-800 p-16 flex flex-col items-center justify-center text-gray-500">
-          <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
-          <p className="mt-3 text-sm">Loading network cases…</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] py-16">
+          <Loader2
+            className="h-8 w-8 animate-spin text-[var(--color-aegis-green)]"
+            aria-hidden
+          />
+          <p className="mt-3 font-data text-sm text-[var(--color-aegis-muted)]">
+            Loading network cases…
+          </p>
         </div>
       )}
 
       {!loading && error && (
-        <div className="rounded-xl bg-gray-900 border border-gray-800 p-6 text-red-400 text-sm">
+        <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-4 font-data text-sm text-red-300">
           {error.message}
         </div>
       )}
 
       {!loading && !error && cases.length === 0 && (
-        <div className="rounded-xl bg-gray-900 border border-gray-800 p-12 text-center">
+        <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-12 text-center">
           <Network
-            className="h-12 w-12 text-gray-600 mx-auto mb-4"
+            className="mx-auto mb-4 h-12 w-12 text-[var(--color-aegis-muted)]"
             aria-hidden
           />
-          <p className="text-gray-400 font-medium">No network cases yet</p>
-          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
-            Run network detection or import cases to see typologies, risk
-            scores, and explanations here.
+          <p className="font-display font-medium text-[#c8d4e0]">
+            No network cases yet
+          </p>
+          <p className="mx-auto mt-2 max-w-md font-data text-sm text-[#9aa7b8]">
+            Run network detection or import cases to see typologies, risk scores,
+            and graph previews here.
           </p>
         </div>
       )}
 
       {!loading && !error && cases.length > 0 && (
-        <ul className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {cases.map((c) => (
-            <li
-              key={c.id}
-              className="rounded-xl bg-gray-900 border border-gray-800 p-6 space-y-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-white truncate">
-                    {c.case_name}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {c.typology ?? "Unknown typology"}
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-1 shrink-0 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-medium px-2.5 py-1 border border-amber-500/20">
-                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-                  {c.risk_score != null
-                    ? formatNumber(c.risk_score, 2)
-                    : "—"}
-                </span>
+            <li key={c.id} className="space-y-3">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-aegis-border)]">
+                <NetworkGraph elements={previewForCase(c.id)} minHeight={200} />
               </div>
-              <div className="text-sm">
-                <span className="text-gray-500">Total amount</span>
-                <p className="text-gray-200 font-medium tabular-nums mt-0.5">
-                  {c.total_amount != null
-                    ? formatNumber(c.total_amount)
-                    : "—"}
-                </p>
-              </div>
-              <div className="text-sm">
-                <span className="text-gray-500">Explanation</span>
-                <p className="text-gray-300 mt-1 leading-relaxed">
-                  {c.explanation ?? "No explanation available."}
-                </p>
-              </div>
+              <CaseReportCard case={c} />
             </li>
           ))}
         </ul>
