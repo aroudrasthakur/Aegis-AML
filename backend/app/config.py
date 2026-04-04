@@ -11,10 +11,6 @@ class Settings(BaseSettings):
     supabase_key: str = ""
     supabase_service_role_key: str = ""
 
-    supabase_bucket_raw: str = "raw-datasets"
-    supabase_bucket_reports: str = "reports"
-    supabase_bucket_models: str = "model-artifacts"
-
     model_dir: str = "./models"
     behavioral_model_path: str = "./models/behavioral/xgboost_behavioral.pkl"
     behavioral_ae_path: str = "./models/behavioral/autoencoder_behavioral.pt"
