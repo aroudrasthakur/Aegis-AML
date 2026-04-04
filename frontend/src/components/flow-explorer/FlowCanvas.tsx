@@ -1,6 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw } from "lucide-react";
-import type { FlowCluster, FlowExplorerNode } from "@/types/flowExplorer";
+import type {
+  FlowCluster,
+  FlowExplorerNode,
+  FlowNodeType,
+} from "@/types/flowExplorer";
+
+/** Canvas / hover label for node role (internal type stays `source` for styling). */
+function nodeTypeDisplayLabel(t: FlowNodeType): string {
+  switch (t) {
+    case "source":
+      return "Entry";
+    case "exit":
+      return "Exit";
+    case "layer":
+      return "Layer";
+    case "feeder":
+      return "Feeder";
+    case "collector":
+      return "Collector";
+    case "out":
+      return "Out";
+    default:
+      return t;
+  }
+}
 
 /** On-screen node radius (px); kept constant across zoom via world-space transform. */
 const NODE_SCREEN_R = 14;
@@ -155,7 +179,7 @@ export type FlowHoverPayload = {
 };
 
 const LEGEND: { label: string; color: string }[] = [
-  { label: "Source", color: "#EF4444" },
+  { label: "Entry", color: "#EF4444" },
   { label: "Layer", color: "#34d399" },
   { label: "Exit", color: "#8B5CF6" },
 ];
@@ -393,8 +417,9 @@ export function FlowCanvas({
       ctx.fillStyle = MUTED;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
+      const typeStr = nodeTypeDisplayLabel(n.type);
       const typeCap =
-        n.type.length > 10 ? `${n.type.slice(0, 9)}…` : n.type;
+        typeStr.length > 10 ? `${typeStr.slice(0, 9)}…` : typeStr;
       ctx.fillText(typeCap, x, y - rWorld - typePad);
 
       ctx.font = `${7.75 / s}px ui-monospace, monospace`;
@@ -539,7 +564,7 @@ export function FlowCanvas({
         onHover({
           id: hit.id,
           label: hit.label,
-          type: hit.type,
+          type: nodeTypeDisplayLabel(hit.type),
           risk: hit.risk,
           clientX: e.clientX,
           clientY: e.clientY,

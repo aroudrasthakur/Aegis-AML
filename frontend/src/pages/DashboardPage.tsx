@@ -188,7 +188,22 @@ export default function DashboardPage() {
   const precision = thresholdCfg?.precision_at_threshold ?? 0;
   const f1 = thresholdCfg?.optimal_f1 ?? 0;
 
-  // KPI summary from the selected run
+  const sparkSeries = useMemo(() => {
+    const done = completedRuns
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .slice(-12);
+    return {
+      criticalAlerts: done.map((r) => r.suspicious_tx_count ?? 0),
+      txnsScored: done.map((r) => r.total_txns ?? 0),
+      networkCases: done.map((r) => r.suspicious_cluster_count ?? 0),
+      heuristicsFired: done.map((r) => r.total_txns ?? 0),
+    };
+  }, [completedRuns]);
+
   const summary = useMemo(
     () => ({
       criticalAlerts: selectedRun?.suspicious_tx_count ?? stats?.total_suspicious ?? 0,
@@ -214,8 +229,9 @@ export default function DashboardPage() {
             : "no runs yet",
         heuristicsFired: `${stats?.completed_runs ?? 0} completed`,
       },
+      sparkSeries,
     }),
-    [stats, selectedRun],
+    [stats, selectedRun, sparkSeries],
   );
 
   const perfMetrics: ModelPerformanceMetric[] = useMemo(() => {

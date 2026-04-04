@@ -83,6 +83,7 @@ def get_heuristic_stats() -> dict:
             "total_scored": total,
             "most_common_top_typology": top_typology,
             "most_common_top_typology_count": top_typology_count,
+            "typology_frequency": dict(typology_counter),
             "triggered_ids_frequency": dict(triggered_counter),
         }
     except Exception:
@@ -91,5 +92,6 @@ def get_heuristic_stats() -> dict:
             "total_scored": 0,
             "most_common_top_typology": None,
             "most_common_top_typology_count": 0,
+            "typology_frequency": {},
             "triggered_ids_frequency": {},
         }

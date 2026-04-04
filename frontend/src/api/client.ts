@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { supabase } from "@/api/supabase";
+import { supabase, supabaseConfigured } from "@/api/supabase";
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -8,6 +8,9 @@ const client = axios.create({
 });
 
 async function getAccessToken(): Promise<string | null> {
+  if (!supabaseConfigured) {
+    return null;
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();
