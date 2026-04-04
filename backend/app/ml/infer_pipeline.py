@@ -195,6 +195,14 @@ class InferencePipeline:
     ) -> dict[str, Any]:
         """Run independent lenses in parallel, aggregate scores."""
         scores: dict[str, Any] = {}
+        lens_available: dict[str, bool] = {
+            "behavioral": self.behavioral.xgb_model is not None,
+            "graph": self.graph.model is not None,
+            "temporal": self.temporal.model is not None,
+            "offramp": self.offramp.classifier is not None,
+            "entity": self.entity.classifier is not None,
+        }
+        scores["_lens_available"] = lens_available
 
         def _behavioral() -> None:
             out = self.behavioral.predict(row_features, h_vec)
@@ -263,10 +271,9 @@ class InferencePipeline:
             "coverage_tier_0": float(data_flags.coverage_tier.value == "tier0"),
             "coverage_tier_1": float(data_flags.coverage_tier.value == "tier1"),
             "coverage_tier_2": float(data_flags.coverage_tier.value == "tier2"),
-            "n_lenses_available": sum(1 for k in (
-                "behavioral_score", "graph_score", "entity_score",
-                "temporal_score", "offramp_score",
-            ) if lens_scores.get(k, 0) != 0),
+            "n_lenses_available": sum(
+                lens_scores.get("_lens_available", {}).values()
+            ),
         }
 
         if self.meta_model is not None:

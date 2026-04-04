@@ -4,6 +4,7 @@ import type { NetworkCase } from "../types/network";
 
 export function useNetworkCases(params?: { page?: number; limit?: number }) {
   const [cases, setCases] = useState<NetworkCase[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -11,8 +12,9 @@ export function useNetworkCases(params?: { page?: number; limit?: number }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchNetworkCases(params);
-      setCases(data);
+      const resp = await fetchNetworkCases(params);
+      setCases(resp.items);
+      setTotal(resp.total);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -24,5 +26,5 @@ export function useNetworkCases(params?: { page?: number; limit?: number }) {
     void refetch();
   }, [refetch]);
 
-  return { cases, loading, error, refetch };
+  return { cases, total, loading, error, refetch };
 }

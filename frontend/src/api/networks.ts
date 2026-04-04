@@ -1,8 +1,15 @@
 import client from "./client";
 import type { NetworkCase } from "../types/network";
 
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export async function fetchNetworkCases(params?: { page?: number; limit?: number }) {
-  const { data } = await client.get<NetworkCase[]>("/networks", { params });
+  const { data } = await client.get<PaginatedResponse<NetworkCase>>("/networks", { params });
   return data;
 }
 

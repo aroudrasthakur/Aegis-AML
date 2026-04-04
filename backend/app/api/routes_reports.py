@@ -1,9 +1,13 @@
 """Report generation endpoints."""
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from app.repositories.reports_repo import get_reports, get_report
-from app.services.report_service import generate_case_report
+from app.services.report_service import generate_case_report, REPORTS_DIR
+from app.utils.logger import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get("")
@@ -18,8 +22,11 @@ async def generate_report(case_id: str):
         if not report:
             raise HTTPException(500, "Report generation failed")
         return report
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Report generation failed for case %s", case_id)
+        raise HTTPException(500, "Report generation failed")
 
 
 @router.get("/{report_id}")
@@ -36,4 +43,10 @@ async def download_report(report_id: str):
     if not report or not report.get("report_path"):
         raise HTTPException(404, "Report not found")
     from fastapi.responses import FileResponse
-    return FileResponse(report["report_path"], filename=f"report_{report_id}.json")
+    resolved = Path(report["report_path"]).resolve()
+    allowed_root = REPORTS_DIR.resolve()
+    if not str(resolved).startswith(str(allowed_root)):
+        raise HTTPException(403, "Access denied")
+    if not resolved.is_file():
+        raise HTTPException(404, "Report file not found on disk")
+    return FileResponse(str(resolved), filename=f"report_{report_id}.json")

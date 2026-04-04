@@ -192,11 +192,17 @@ def main() -> None:
     X, y = _build_wallet_sequences(txn_df, wallet_labels)
     logger.info("Built %d wallet sequences (illicit=%d)", len(y), int(y.sum()))
 
-    split = int(0.8 * len(y))
-    perm = np.random.RandomState(42).permutation(len(y))
-    X, y = X[perm], y[perm]
-    X_train, y_train = X[:split], y[:split]
-    X_val, y_val = X[split:], y[split:]
+    from sklearn.model_selection import train_test_split as _split
+    if len(np.unique(y)) >= 2 and len(y) >= 10:
+        train_idx, val_idx = _split(
+            np.arange(len(y)), test_size=0.2, random_state=42, stratify=y,
+        )
+    else:
+        perm = np.random.RandomState(42).permutation(len(y))
+        split = int(0.8 * len(y))
+        train_idx, val_idx = perm[:split], perm[split:]
+    X_train, y_train = X[train_idx], y[train_idx]
+    X_val, y_val = X[val_idx], y[val_idx]
 
     X_train, y_train = _oversample_illicit(X_train, y_train)
     input_dim = X_train.shape[2]

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from app.supabase_client import get_supabase
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def _page_range(page: int, limit: int) -> tuple[int, int]:
@@ -33,6 +36,7 @@ def insert_network_case(case_data: dict, wallet_addresses: list[str]) -> dict:
         out["wallet_addresses"] = list(wallet_addresses)
         return out
     except Exception:
+        logger.exception("insert_network_case failed")
         return {}
 
 
@@ -49,6 +53,7 @@ def get_network_cases(page: int = 1, limit: int = 50) -> tuple[list[dict], int]:
         )
         return list(resp.data or []), int(resp.count or 0)
     except Exception:
+        logger.exception("get_network_cases failed (page=%d, limit=%d)", page, limit)
         return [], 0
 
 
@@ -75,4 +80,5 @@ def get_network_case(case_id: str) -> dict | None:
         row["wallet_addresses"] = addresses
         return row
     except Exception:
+        logger.exception("get_network_case failed for %s", case_id)
         return None

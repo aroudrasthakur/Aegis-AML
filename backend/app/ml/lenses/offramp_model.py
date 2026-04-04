@@ -15,17 +15,18 @@ class OfframpLens:
         self.classifier = None
 
     def _select_features(self, features_df: pd.DataFrame, heuristic_scores: np.ndarray = None) -> np.ndarray:
+        """Select the same offramp features used during training.
+
+        Training uses 8 offramp columns + 4 heuristic aggregate columns.
+        The raw 185-element heuristic vector is intentionally excluded to keep
+        the feature space aligned with training.
+        """
         offramp_cols = [c for c in features_df.columns if c in {
             "fan_in_ratio", "weighted_in", "in_degree",
             "suspicious_neighbor_ratio_1hop", "suspicious_neighbor_ratio_2hop",
             "amount", "log_amount", "relay_pattern_score",
         }]
         feat = features_df[offramp_cols].fillna(0).values if offramp_cols else np.zeros((len(features_df), 1))
-        if heuristic_scores is not None and len(heuristic_scores) > 0:
-            if heuristic_scores.ndim == 1:
-                heuristic_scores = heuristic_scores.reshape(1, -1)
-            h = np.broadcast_to(heuristic_scores, (feat.shape[0], heuristic_scores.shape[-1])) if heuristic_scores.shape[0] == 1 else heuristic_scores
-            feat = np.hstack([feat, h[:feat.shape[0]]])
         return feat.astype(np.float32)
 
     def predict(self, features_df: pd.DataFrame, heuristic_scores: np.ndarray = None, context: dict = None) -> dict:

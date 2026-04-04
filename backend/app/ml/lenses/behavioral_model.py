@@ -42,7 +42,12 @@ class BehavioralLens:
         self._device = None
 
     def _select_features(self, features_df: pd.DataFrame, heuristic_scores: np.ndarray) -> np.ndarray:
-        """Combine behavioral features with heuristic scores tagged for this lens."""
+        """Select the same behavioral features used during training.
+
+        The XGBoost model and scaler were trained on the 12 named columns only.
+        The raw 185-element heuristic vector is intentionally excluded to keep
+        the feature space aligned with training.
+        """
         behavioral_cols = [c for c in features_df.columns if c in {
             "amount", "log_amount", "fee_ratio", "is_round_amount",
             "burstiness_score", "amount_deviation", "sender_tx_count",
@@ -50,11 +55,6 @@ class BehavioralLens:
             "balance_ratio", "unique_counterparties", "relay_pattern_score",
         }]
         feat = features_df[behavioral_cols].fillna(0).values if behavioral_cols else np.zeros((len(features_df), 1))
-        if heuristic_scores is not None and len(heuristic_scores) > 0:
-            if heuristic_scores.ndim == 1:
-                heuristic_scores = heuristic_scores.reshape(1, -1)
-            h_expanded = np.broadcast_to(heuristic_scores, (feat.shape[0], heuristic_scores.shape[-1])) if heuristic_scores.shape[0] == 1 else heuristic_scores
-            feat = np.hstack([feat, h_expanded[:feat.shape[0]]])
         return feat.astype(np.float32)
 
     def predict(self, features_df: pd.DataFrame, heuristic_scores: np.ndarray = None) -> dict:

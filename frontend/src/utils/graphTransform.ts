@@ -14,10 +14,16 @@ interface ApiEdge {
   [key: string]: unknown;
 }
 
-interface ApiGraph {
+interface ApiGraphSeparate {
   nodes: ApiNode[];
   edges: ApiEdge[];
 }
+
+interface ApiGraphFlat {
+  elements: CytoscapeElement[];
+}
+
+type ApiGraph = ApiGraphSeparate | ApiGraphFlat;
 
 export type { CytoscapeElement } from "../types/graph";
 
@@ -30,9 +36,14 @@ function riskToColor(score: number | undefined): string {
 }
 
 export function apiGraphToCytoscape(graph: ApiGraph): CytoscapeElement[] {
+  if ("elements" in graph && Array.isArray(graph.elements)) {
+    return graph.elements;
+  }
+
+  const { nodes, edges } = graph as ApiGraphSeparate;
   const elements: CytoscapeElement[] = [];
 
-  for (const node of graph.nodes) {
+  for (const node of nodes) {
     const { id, label, risk_score, ...rest } = node;
     elements.push({
       data: {
@@ -44,7 +55,7 @@ export function apiGraphToCytoscape(graph: ApiGraph): CytoscapeElement[] {
     });
   }
 
-  for (const edge of graph.edges) {
+  for (const edge of edges) {
     const { source, target, amount, ...rest } = edge;
     elements.push({
       data: {

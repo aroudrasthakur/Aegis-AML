@@ -9,6 +9,7 @@ export function useTransactions(params?: {
   min_risk?: number;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -16,8 +17,9 @@ export function useTransactions(params?: {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTransactions(params);
-      setTransactions(data);
+      const resp = await fetchTransactions(params);
+      setTransactions(resp.items);
+      setTotal(resp.total);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -29,5 +31,5 @@ export function useTransactions(params?: {
     void refetch();
   }, [refetch]);
 
-  return { transactions, loading, error, refetch };
+  return { transactions, total, loading, error, refetch };
 }

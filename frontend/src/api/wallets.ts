@@ -1,13 +1,20 @@
 import client from "./client";
-import type { Wallet } from "../types/wallet";
+import type { Wallet, WalletScore } from "../types/wallet";
+
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export async function fetchWallets(params?: { page?: number; limit?: number }) {
-  const { data } = await client.get<Wallet[]>("/wallets", { params });
+  const { data } = await client.get<PaginatedResponse<Wallet>>("/wallets", { params });
   return data;
 }
 
 export async function fetchWallet(address: string) {
-  const { data } = await client.get<Wallet>(`/wallets/${address}`);
+  const { data } = await client.get<Wallet & { score: WalletScore | null }>(`/wallets/${address}`);
   return data;
 }
 

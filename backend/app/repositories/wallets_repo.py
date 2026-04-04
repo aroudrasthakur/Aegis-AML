@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from app.supabase_client import get_supabase
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def _page_range(page: int, limit: int) -> tuple[int, int]:
@@ -19,6 +22,7 @@ def upsert_wallets(records: list[dict]) -> list[dict]:
         resp = sb.table("wallets").upsert(records, on_conflict="wallet_address").execute()
         return list(resp.data or [])
     except Exception:
+        logger.exception("upsert_wallets failed for %d records", len(records))
         return []
 
 
@@ -35,6 +39,7 @@ def get_wallets(page: int = 1, limit: int = 50) -> tuple[list[dict], int]:
         )
         return list(resp.data or []), int(resp.count or 0)
     except Exception:
+        logger.exception("get_wallets failed (page=%d, limit=%d)", page, limit)
         return [], 0
 
 
@@ -52,4 +57,5 @@ def get_wallet_by_address(address: str) -> dict | None:
             return None
         return resp.data
     except Exception:
+        logger.exception("get_wallet_by_address failed for %s", address)
         return None

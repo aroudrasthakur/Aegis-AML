@@ -81,15 +81,40 @@ def _prepare_features(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
     return df[cols].fillna(0).values.astype(np.float32), cols
 
 
-def _find_optimal_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> dict:
+def _find_optimal_threshold(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    min_recall: float = 0.95,
+) -> dict:
+    """Select threshold that maximises precision while keeping recall >= min_recall.
+
+    AML systems prioritise recall on illicit flows.  F1 weights precision
+    equally with recall and therefore sets the threshold too high for this
+    domain.  Instead we find the *highest* threshold (= best precision)
+    that still achieves the target recall.
+    """
     precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
-    f1_scores = 2 * (precision * recall) / (precision + recall + 1e-8)
-    best_idx = int(np.argmax(f1_scores))
+
+    # Indices where recall is at or above the target
+    valid = recall >= min_recall
+    if valid.any():
+        # Among valid points, pick the one with best precision
+        candidates = np.where(valid)[0]
+        best_idx = int(candidates[np.argmax(precision[candidates])])
+    else:
+        # Fallback: lowest available threshold (highest recall point)
+        best_idx = len(thresholds) - 1 if len(thresholds) > 0 else 0
+
+    f1 = float(
+        2 * precision[best_idx] * recall[best_idx]
+        / (precision[best_idx] + recall[best_idx] + 1e-8)
+    )
     return {
         "optimal_threshold": float(thresholds[best_idx]) if best_idx < len(thresholds) else 0.5,
-        "optimal_f1": float(f1_scores[best_idx]),
+        "optimal_f1": f1,
         "precision_at_threshold": float(precision[best_idx]),
         "recall_at_threshold": float(recall[best_idx]),
+        "min_recall_target": min_recall,
     }
 
 
@@ -126,11 +151,19 @@ def main() -> None:
     y = df["label"].values.astype(int)
     logger.info("Meta features: %d total (%s)", len(feature_names), feature_names)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_holdout, y_train, y_holdout = train_test_split(
+        X, y, test_size=0.3, random_state=42, stratify=y,
+    )
+    X_cal, X_test, y_cal, y_test = train_test_split(
+        X_holdout, y_holdout, test_size=0.5, random_state=42, stratify=y_holdout,
+    )
     n_pos = int(y_train.sum())
     n_neg = len(y_train) - n_pos
     spw = n_neg / max(n_pos, 1)
-    logger.info("Balance: %d pos / %d neg → spw=%.2f", n_pos, n_neg, spw)
+    logger.info(
+        "Balance: %d pos / %d neg → spw=%.2f  |  train=%d  cal=%d  test=%d",
+        n_pos, n_neg, spw, len(y_train), len(y_cal), len(y_test),
+    )
 
     base_model = XGBClassifier(
         n_estimators=300,
@@ -145,16 +178,18 @@ def main() -> None:
         colsample_bytree=0.8,
         **xgboost_fit_kwargs(),
     )
-    base_model = fit_xgboost_classifier(base_model, X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+    base_model = fit_xgboost_classifier(
+        base_model, X_train, y_train, eval_set=[(X_cal, y_cal)], verbose=False,
+    )
 
-    logger.info("Applying Platt calibration (sigmoid)...")
+    logger.info("Applying Platt calibration on held-out calibration set...")
     calibrated = CalibratedClassifierCV(base_model, cv="prefit", method="sigmoid")
-    calibrated.fit(X_val, y_val)
+    calibrated.fit(X_cal, y_cal)
 
-    y_prob = calibrated.predict_proba(X_val)[:, 1]
-    pr_auc = average_precision_score(y_val, y_prob)
-    roc = roc_auc_score(y_val, y_prob)
-    threshold_info = _find_optimal_threshold(y_val, y_prob)
+    y_prob = calibrated.predict_proba(X_test)[:, 1]
+    pr_auc = average_precision_score(y_test, y_prob)
+    roc = roc_auc_score(y_test, y_prob)
+    threshold_info = _find_optimal_threshold(y_test, y_prob)
     threshold = threshold_info["optimal_threshold"]
 
     logger.info("Meta-Learner PR-AUC: %.4f  ROC-AUC: %.4f", pr_auc, roc)
@@ -162,7 +197,7 @@ def main() -> None:
                 threshold, threshold_info["optimal_f1"],
                 threshold_info["precision_at_threshold"],
                 threshold_info["recall_at_threshold"])
-    logger.info("\n%s", classification_report(y_val, (y_prob >= threshold).astype(int), zero_division=0))
+    logger.info("\n%s", classification_report(y_test, (y_prob >= threshold).astype(int), zero_division=0))
 
     importances = base_model.feature_importances_
     importance_pairs = sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True)
@@ -190,7 +225,8 @@ def main() -> None:
         "roc_auc": roc,
         "threshold": threshold,
         "n_train": len(y_train),
-        "n_val": len(y_val),
+        "n_cal": len(y_cal),
+        "n_test": len(y_test),
         "n_features": len(feature_names),
         "feature_importance": {name: float(imp) for name, imp in importance_pairs},
     }

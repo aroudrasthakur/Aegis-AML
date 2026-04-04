@@ -3,6 +3,9 @@ from __future__ import annotations
 from collections import Counter
 
 from app.supabase_client import get_supabase
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def upsert_heuristic_results(records: list[dict]) -> list[dict]:
@@ -15,6 +18,7 @@ def upsert_heuristic_results(records: list[dict]) -> list[dict]:
         ).execute()
         return list(resp.data or [])
     except Exception:
+        logger.exception("upsert_heuristic_results failed for %d records", len(records))
         return []
 
 
@@ -32,6 +36,7 @@ def get_heuristic_result(transaction_id: str) -> dict | None:
             return None
         return resp.data
     except Exception:
+        logger.exception("get_heuristic_result failed for %s", transaction_id)
         return None
 
 
@@ -81,6 +86,7 @@ def get_heuristic_stats() -> dict:
             "triggered_ids_frequency": dict(triggered_counter),
         }
     except Exception:
+        logger.exception("get_heuristic_stats failed")
         return {
             "total_scored": 0,
             "most_common_top_typology": None,

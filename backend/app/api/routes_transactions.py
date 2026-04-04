@@ -32,13 +32,10 @@ async def get_transaction(transaction_id: str):
 
 @router.post("/score")
 async def score_all():
-    from app.ml.infer_pipeline import InferencePipeline
+    from app.services.scoring_service import score_and_persist
     from app.repositories.transactions_repo import get_transactions
     data, total = get_transactions(page=1, limit=10000)
     if not data:
         return {"scored": 0}
-    pipeline = InferencePipeline()
-    pipeline.load_models()
-    # Graph will be built automatically inside score_transactions
-    results = pipeline.score_transactions(data, graph=None)
+    results = score_and_persist(data)
     return {"scored": len(results)}

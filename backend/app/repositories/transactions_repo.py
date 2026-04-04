@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from app.supabase_client import get_supabase
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def _page_range(page: int, limit: int) -> tuple[int, int]:
@@ -21,6 +24,7 @@ def insert_transactions(records: list[dict]) -> list[dict]:
         ).execute()
         return list(resp.data or [])
     except Exception:
+        logger.exception("insert_transactions failed for %d records", len(records))
         return []
 
 
@@ -50,6 +54,7 @@ def get_transactions(
         resp = q.execute()
         return list(resp.data or []), int(resp.count or 0)
     except Exception:
+        logger.exception("get_transactions failed (page=%d, limit=%d)", page, limit)
         return [], 0
 
 
@@ -67,4 +72,5 @@ def get_transaction_by_id(transaction_id: str) -> dict | None:
             return None
         return resp.data
     except Exception:
+        logger.exception("get_transaction_by_id failed for %s", transaction_id)
         return None

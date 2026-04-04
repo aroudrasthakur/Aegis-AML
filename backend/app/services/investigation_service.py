@@ -1,7 +1,7 @@
 """Network case assembly: detect suspicious clusters and create cases."""
 import networkx as nx
 from app.repositories.transactions_repo import get_transactions
-from app.repositories.scores_repo import get_transaction_score
+from app.repositories.scores_repo import get_transaction_scores_batch
 from app.repositories.network_cases_repo import insert_network_case
 from app.services.graph_service import build_wallet_graph, compute_node_features
 from app.utils.graph_utils import detect_cycles
@@ -19,10 +19,13 @@ def detect_suspicious_networks(risk_threshold: float = 0.75, min_cluster_size: i
     G = build_wallet_graph(data)
     node_features = compute_node_features(G)
     
-    # Identify high-risk wallets
+    tx_ids = [tx.get("transaction_id", "") for tx in data if tx.get("transaction_id")]
+    scores_map = get_transaction_scores_batch(tx_ids)
+
     high_risk_wallets = set()
     for tx in data:
-        score = get_transaction_score(tx.get("transaction_id", ""))
+        tx_id = tx.get("transaction_id", "")
+        score = scores_map.get(tx_id)
         if score and (score.get("meta_score") or 0) >= risk_threshold:
             high_risk_wallets.add(tx.get("sender_wallet"))
             high_risk_wallets.add(tx.get("receiver_wallet"))

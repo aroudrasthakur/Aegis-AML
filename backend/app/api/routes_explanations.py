@@ -1,8 +1,10 @@
 """Explanation endpoints."""
 from fastapi import APIRouter, HTTPException
 from app.services.explanation_service import explain_transaction, explain_case
+from app.utils.logger import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get("/{transaction_id}")
@@ -12,8 +14,11 @@ async def get_transaction_explanation(transaction_id: str):
         if not explanation:
             raise HTTPException(404, "No explanation available")
         return explanation
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Explanation failed for transaction %s", transaction_id)
+        raise HTTPException(500, "Internal server error")
 
 
 @router.get("/case/{case_id}")
@@ -23,5 +28,8 @@ async def get_case_explanation(case_id: str):
         if not explanation:
             raise HTTPException(404, "No explanation available")
         return explanation
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Explanation failed for case %s", case_id)
+        raise HTTPException(500, "Internal server error")

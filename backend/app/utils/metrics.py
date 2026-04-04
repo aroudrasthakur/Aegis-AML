@@ -55,7 +55,10 @@ def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: i
     bin_edges = np.linspace(0, 1, n_bins + 1)
     ece = 0.0
     for i in range(n_bins):
-        mask = (y_prob >= bin_edges[i]) & (y_prob < bin_edges[i + 1])
+        if i < n_bins - 1:
+            mask = (y_prob >= bin_edges[i]) & (y_prob < bin_edges[i + 1])
+        else:
+            mask = (y_prob >= bin_edges[i]) & (y_prob <= bin_edges[i + 1])
         if mask.sum() == 0:
             continue
         bin_acc = y_true[mask].mean()
