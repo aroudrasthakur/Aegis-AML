@@ -168,7 +168,14 @@ async def execute_pipeline_run(run_id: str, frames: list[pd.DataFrame]) -> None:
 
         # ---- 10. Generate structured report ----------------------------------
         report_content = _build_report(
-            run_id, total_txns, len(suspicious), cluster_records, results, suspicious, len(frames),
+            run_id,
+            total_txns,
+            len(suspicious),
+            cluster_records,
+            results,
+            suspicious,
+            len(frames),
+            threshold,
         )
         report_title = f"Pipeline Run Report - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
         await loop.run_in_executor(
@@ -330,6 +337,7 @@ def _build_report(
     all_results: list[dict],
     suspicious: list[dict],
     file_count: int,
+    suspicious_threshold: float,
 ) -> dict:
     top_risky = sorted(suspicious, key=lambda x: x.get("meta_score", 0), reverse=True)[:20]
     cluster_summaries = []
@@ -352,7 +360,7 @@ def _build_report(
             "total_transactions": total_txns,
             "suspicious_transactions": suspicious_count,
             "cluster_count": len(cluster_records),
-            "threshold_used": SUSPICIOUS_THRESHOLD,
+            "threshold_used": suspicious_threshold,
         },
         "top_suspicious_transactions": [
             {
