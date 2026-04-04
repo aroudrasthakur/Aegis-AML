@@ -14,6 +14,7 @@ if "torch_geometric" not in sys.modules:
     _tg_nn = types.ModuleType("torch_geometric.nn")
     _tg_data = types.ModuleType("torch_geometric.data")
     _tg_nn.GATConv = MagicMock()
+    _tg_nn.GCNConv = MagicMock()
 
     class _FakeData:
         def __init__(self, **kwargs):

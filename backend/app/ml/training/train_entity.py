@@ -15,15 +15,16 @@ from sklearn.metrics import average_precision_score, classification_report
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 
+from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import fit_xgboost_classifier, log_device_banner, xgboost_fit_kwargs
 from app.services.graph_service import build_wallet_graph
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path("models/entity")
-EMBEDDINGS_PATH = Path("models/graph/node_embeddings.npy")
-NODE_MAP_PATH = Path("models/graph/node_mapping.json")
+OUTPUT_DIR = MODELS_DIR / "entity"
+EMBEDDINGS_PATH = MODELS_DIR / "graph" / "node_embeddings.npy"
+NODE_MAP_PATH = MODELS_DIR / "graph" / "node_mapping.json"
 
 
 def _load_data(data_dir: Path) -> tuple[nx.DiGraph, pd.DataFrame | None]:

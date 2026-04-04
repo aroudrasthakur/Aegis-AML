@@ -12,13 +12,14 @@ import torch.nn as nn
 from sklearn.metrics import average_precision_score, classification_report
 
 from app.ml.lenses.temporal_model import TemporalLSTM, MAX_SEQ_LEN
+from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import log_device_banner, resolve_torch_device
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path("models/temporal")
-EPOCHS = 60
+OUTPUT_DIR = MODELS_DIR / "temporal"
+EPOCHS = 100
 LR = 1e-3
 BATCH_SIZE = 64
 PATIENCE = 10

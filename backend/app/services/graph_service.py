@@ -1,7 +1,7 @@
 """Directed temporal graph construction and node-level metrics (NetworkX)."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import networkx as nx
 import numpy as np
@@ -120,8 +120,17 @@ def build_transaction_graph(
     return G
 
 
-def compute_node_features(G: nx.DiGraph) -> dict[str, dict[str, Any]]:
-    """Per-node degrees, volumes, balance ratio, centrality metrics."""
+def compute_node_features(
+    G: nx.DiGraph,
+    *,
+    global_metrics: Literal["full", "none"] = "full",
+) -> dict[str, dict[str, Any]]:
+    """Per-node degrees, volumes, balance ratio, and optional global centrality metrics.
+
+    ``global_metrics``:
+    - ``full``: betweenness, PageRank, clustering (slow on very large graphs).
+    - ``none``: set those three to 0.0 (fast; local stats only).
+    """
     if G.number_of_nodes() == 0:
         return {}
 
@@ -154,6 +163,16 @@ def compute_node_features(G: nx.DiGraph) -> dict[str, dict[str, Any]]:
                 "balance_ratio": bal,
             }
         )
+
+    if global_metrics == "none":
+        for n in nodes:
+            result[n]["betweenness_centrality"] = 0.0
+            result[n]["pagerank"] = 0.0
+            result[n]["clustering_coefficient"] = 0.0
+        logger.info(
+            "compute_node_features: global_metrics=none (skipped betweenness/pagerank/clustering)",
+        )
+        return result
 
     try:
         between = nx.betweenness_centrality(G)

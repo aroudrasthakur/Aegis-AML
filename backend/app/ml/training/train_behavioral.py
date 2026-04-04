@@ -16,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from app.ml.lenses.behavioral_model import BehavioralAutoencoder
+from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import (
     fit_xgboost_classifier,
     log_device_banner,
@@ -33,10 +34,10 @@ BEHAVIORAL_FEATURES = [
     "balance_ratio", "unique_counterparties", "relay_pattern_score",
 ]
 
-OUTPUT_DIR = Path("models/behavioral")
+OUTPUT_DIR = MODELS_DIR / "behavioral"
 # Hyperparameters tuned for AML detection on imbalanced data
 # Early stopping patience is conservative to avoid underfitting on rare illicit patterns
-AE_EPOCHS = 50
+AE_EPOCHS = 100
 AE_LR = 1e-3
 AE_LATENT = 32
 AE_BATCH = 256

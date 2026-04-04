@@ -12,12 +12,13 @@ from sklearn.metrics import average_precision_score, classification_report
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 
+from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import fit_xgboost_classifier, log_device_banner, xgboost_fit_kwargs
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path("models/document")
+OUTPUT_DIR = MODELS_DIR / "document"
 
 DOCUMENT_FEATURES = [
     "doc_consistency_score", "doc_completeness_score", "doc_timeliness_score",

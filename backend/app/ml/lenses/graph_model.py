@@ -1,8 +1,8 @@
-"""Graph Lens: GAT-based structural anomaly detection."""
+"""Graph Lens: GAT / GCN structural models for wallet graphs."""
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATConv, GCNConv
 from torch_geometric.data import Data
 from pathlib import Path
 
@@ -15,20 +15,73 @@ logger = get_logger(__name__)
 
 
 class GATClassifier(torch.nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int = 64, heads: int = 8, num_classes: int = 2):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int = 64,
+        heads: int = 8,
+        num_classes: int = 2,
+        dropout: float = 0.3,
+    ):
         super().__init__()
-        self.conv1 = GATConv(in_channels, hidden_channels, heads=heads, dropout=0.3)
-        self.conv2 = GATConv(hidden_channels * heads, num_classes, heads=1, concat=False, dropout=0.3)
+        self.dropout_p = dropout
+        self.conv1 = GATConv(
+            in_channels, hidden_channels, heads=heads, dropout=dropout
+        )
+        self.conv2 = GATConv(
+            hidden_channels * heads,
+            num_classes,
+            heads=1,
+            concat=False,
+            dropout=dropout,
+        )
 
     def forward(self, x, edge_index):
         x = F.elu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=self.dropout_p, training=self.training)
         x = self.conv2(x, edge_index)
         return x
 
     def get_embeddings(self, x, edge_index):
         x = F.elu(self.conv1(x, edge_index))
         return x
+
+
+class GCNClassifier(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int = 64,
+        num_classes: int = 2,
+        dropout: float = 0.3,
+    ):
+        super().__init__()
+        self.dropout_p = dropout
+        self.conv1 = GCNConv(in_channels, hidden_channels)
+        self.conv2 = GCNConv(hidden_channels, num_classes)
+
+    def forward(self, x, edge_index):
+        x = F.relu(self.conv1(x, edge_index))
+        x = F.dropout(x, p=self.dropout_p, training=self.training)
+        x = self.conv2(x, edge_index)
+        return x
+
+    def get_embeddings(self, x, edge_index):
+        return F.relu(self.conv1(x, edge_index))
+
+
+def build_graph_model(
+    model_type: str,
+    in_channels: int,
+    hidden_channels: int = 64,
+    heads: int = 8,
+    num_classes: int = 2,
+    dropout: float = 0.3,
+) -> torch.nn.Module:
+    mt = (model_type or "gat").lower()
+    if mt == "gcn":
+        return GCNClassifier(in_channels, hidden_channels, num_classes, dropout)
+    return GATClassifier(in_channels, hidden_channels, heads, num_classes, dropout)
 
 
 class GraphLens:
@@ -65,7 +118,7 @@ class GraphLens:
         return Data(x=x, edge_index=edge_index)
 
     def predict(self, G: nx.DiGraph, node_features: dict, heuristic_scores: dict = None) -> dict:
-        """Run GAT inference."""
+        """Run graph encoder inference."""
         data = self.nx_to_pyg(G, node_features, heuristic_scores)
         if self.model is None:
             return {"graph_score": np.zeros(data.x.shape[0]), "embeddings": data.x.numpy()}
@@ -89,7 +142,23 @@ class GraphLens:
             self._device = resolve_torch_device()
             state = torch.load(p, map_location=self._device, weights_only=True)
             in_channels = state.get("in_channels", 7)
-            self.model = GATClassifier(in_channels)
+            model_type = state.get("model_type", "gat")
+            hidden_channels = state.get("hidden_channels", 64)
+            heads = state.get("heads", 8)
+            dropout = state.get("dropout", 0.3)
+            self.model = build_graph_model(
+                model_type,
+                in_channels,
+                hidden_channels=hidden_channels,
+                heads=heads,
+                num_classes=2,
+                dropout=dropout,
+            )
             self.model.load_state_dict(state["model_state_dict"])
             self.model.to(self._device)
-            logger.info(f"Loaded GAT model from {p} (device={self._device})")
+            logger.info(
+                "Loaded %s model from %s (device=%s)",
+                model_type,
+                p,
+                self._device,
+            )

@@ -53,6 +53,13 @@ class TestComputeNodeFeatures:
         G = nx.DiGraph()
         assert compute_node_features(G) == {}
 
+    def test_global_metrics_none_zeros_globals(self, sample_graph):
+        features = compute_node_features(sample_graph, global_metrics="none")
+        for _, feat_dict in features.items():
+            assert feat_dict["betweenness_centrality"] == 0.0
+            assert feat_dict["pagerank"] == 0.0
+            assert feat_dict["clustering_coefficient"] == 0.0
+
 
 class TestKHopSubgraph:
     def test_one_hop_subgraph_size(self, sample_graph):

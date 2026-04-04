@@ -1,3 +1,16 @@
+# --- Install order -----------------------------------------------------------
+# CPU (default): install everything in one step.
+#   pip install -r requirements.txt
+#
+# NVIDIA GPU — use the CUDA line that matches your driver from https://pytorch.org/get-started/locally/
+# Blackwell (RTX 50-series, sm_120): use CUDA 12.8 wheels, NOT cu124:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements.txt
+# Install torch *before* the rest so torch-geometric matches your torch build.
+#
+# Verify GPU: python -c "import torch; x=torch.randperm(2,device='cuda'); print(torch.__version__, x)"
+# -----------------------------------------------------------------------------
+
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 supabase>=2.11.0
@@ -8,6 +21,8 @@ xgboost>=2.1.0
 lightgbm>=4.5.0
 torch>=2.4.0
 torch-geometric>=2.6.0
+# Optional: NeighborLoader / neighbor sampling (pick wheel matching your torch+CUDA from https://data.pyg.org/whl/)
+# Example: pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
 networkx>=3.3
 python-louvain>=0.16
 leidenalg>=0.10.0

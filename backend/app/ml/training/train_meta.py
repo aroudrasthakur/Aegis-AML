@@ -19,13 +19,14 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 
+from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import fit_xgboost_classifier, log_device_banner, xgboost_fit_kwargs
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path("models/meta")
-ARTIFACTS_DIR = Path("models/artifacts")
+OUTPUT_DIR = MODELS_DIR / "meta"
+ARTIFACTS_DIR = MODELS_DIR / "artifacts"
 
 META_FEATURES = [
     # 6 lens scores
@@ -105,14 +106,14 @@ def main() -> None:
 
     # Validate that all lens models exist before training meta-model
     required_models = [
-        "models/behavioral/xgboost_behavioral.pkl",
-        "models/graph/gat_model.pt",
-        "models/entity/entity_classifier.pkl",
-        "models/temporal/lstm_model.pt",
-        "models/document/document_classifier.pkl",
-        "models/offramp/offramp_classifier.pkl",
+        MODELS_DIR / "behavioral" / "xgboost_behavioral.pkl",
+        MODELS_DIR / "graph" / "gat_model.pt",
+        MODELS_DIR / "entity" / "entity_classifier.pkl",
+        MODELS_DIR / "temporal" / "lstm_model.pt",
+        MODELS_DIR / "document" / "document_classifier.pkl",
+        MODELS_DIR / "offramp" / "offramp_classifier.pkl",
     ]
-    missing = [m for m in required_models if not Path(m).exists()]
+    missing = [str(m) for m in required_models if not m.exists()]
     if missing:
         logger.error("Missing required lens models: %s", missing)
         logger.info("Train all lens models first before training the meta-learner")

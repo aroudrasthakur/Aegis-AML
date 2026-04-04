@@ -23,6 +23,7 @@ if "torch_geometric" not in sys.modules:
                 setattr(self, k, v)
 
     _tg_nn.GATConv = _FakeGATConv
+    _tg_nn.GCNConv = _FakeGATConv
     _tg_data.Data = _FakeData
     sys.modules["torch_geometric"] = _tg
     sys.modules["torch_geometric.nn"] = _tg_nn
