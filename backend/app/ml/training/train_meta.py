@@ -100,6 +100,22 @@ def main() -> None:
     data_dir = Path(args.data_dir)
 
     logger.info("=== Training Meta-Learner ===")
+    
+    # Validate that all lens models exist before training meta-model
+    required_models = [
+        "models/behavioral/xgboost_behavioral.pkl",
+        "models/graph/gat_model.pt",
+        "models/entity/entity_classifier.pkl",
+        "models/temporal/lstm_model.pt",
+        "models/document/document_classifier.pkl",
+        "models/offramp/offramp_classifier.pkl",
+    ]
+    missing = [m for m in required_models if not Path(m).exists()]
+    if missing:
+        logger.error("Missing required lens models: %s", missing)
+        logger.info("Train all lens models first before training the meta-learner")
+        sys.exit(1)
+    
     df = _load_data(data_dir)
 
     if "label" not in df.columns:

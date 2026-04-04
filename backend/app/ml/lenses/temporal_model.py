@@ -16,7 +16,7 @@ class TemporalLSTM(nn.Module):
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True)
         self.classifier = nn.Sequential(
             nn.Linear(hidden_dim, 64), nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(64, 1), nn.Sigmoid(),
+            nn.Linear(64, 1),
         )
 
     def forward(self, x):
@@ -65,7 +65,8 @@ class TemporalLens:
                 self.model.eval()
                 with torch.no_grad():
                     tensor = torch.FloatTensor(seq)
-                    score = self.model(tensor).item()
+                    logit = self.model(tensor).item()
+                    score = 1.0 / (1.0 + np.exp(-logit))  # Apply sigmoid to convert logit to probability
             else:
                 score = 0.0
             scores[wallet] = score

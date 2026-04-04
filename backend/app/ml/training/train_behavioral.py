@@ -28,6 +28,8 @@ BEHAVIORAL_FEATURES = [
 ]
 
 OUTPUT_DIR = Path("models/behavioral")
+# Hyperparameters tuned for AML detection on imbalanced data
+# Early stopping patience is conservative to avoid underfitting on rare illicit patterns
 AE_EPOCHS = 50
 AE_LR = 1e-3
 AE_LATENT = 32
@@ -66,6 +68,7 @@ def _train_xgboost(X_train, y_train, X_val, y_val) -> XGBClassifier:
     n_neg = len(y_train) - n_pos
     spw = n_neg / max(n_pos, 1)
     logger.info("Class balance: %d pos / %d neg → scale_pos_weight=%.2f", n_pos, n_neg, spw)
+    logger.info("Training XGBoost with %d features", X_train.shape[1])
 
     model = XGBClassifier(
         n_estimators=300,
