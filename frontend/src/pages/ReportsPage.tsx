@@ -11,6 +11,7 @@ import {
 import { useRunContext } from "@/contexts/useRunContext";
 import { fetchRunReport } from "@/api/runs";
 import type { PipelineRun, RunReport, RunReportContent } from "@/types/run";
+import ReportSummaryPanel from "@/components/ReportSummaryPanel";
 
 export default function ReportsPage() {
   const { runs, selectRun } = useRunContext();
@@ -159,6 +160,8 @@ function ReportDetail({
         <StatCard label="Suspicious" value={s.suspicious_transactions} accent />
         <StatCard label="Clusters" value={s.cluster_count} />
       </div>
+
+      <ReportSummaryPanel runId={report.run_id} />
 
       {/* Score distribution */}
       <Section

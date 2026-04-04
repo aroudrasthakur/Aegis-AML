@@ -1,18 +1,14 @@
 import type { NetworkCase } from "@/types/network";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/formatters";
+import { useThresholds } from "@/contexts/ThresholdProvider";
+import { riskBarClassFromScore } from "@/utils/riskTiers";
 
 export interface CaseReportCardProps {
   case: NetworkCase;
 }
 
-function riskBarColor(score: number): string {
-  if (score >= 0.75) return "bg-[var(--color-aegis-red)]";
-  if (score >= 0.5) return "bg-[var(--color-aegis-amber)]";
-  if (score >= 0.25) return "bg-[#fbbf24]";
-  return "bg-[var(--color-aegis-green)]";
-}
-
 export default function CaseReportCard({ case: networkCase }: CaseReportCardProps) {
+  const { config: tierConfig } = useThresholds();
   const risk = networkCase.risk_score ?? null;
   const riskPct = risk == null ? 0 : Math.min(100, Math.max(0, risk * 100));
 
@@ -69,7 +65,7 @@ export default function CaseReportCard({ case: networkCase }: CaseReportCardProp
         {risk != null && (
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#060810]">
             <div
-              className={`h-full rounded-full ${riskBarColor(risk)}`}
+              className={`h-full rounded-full ${riskBarClassFromScore(risk, tierConfig)}`}
               style={{ width: `${riskPct}%` }}
             />
           </div>

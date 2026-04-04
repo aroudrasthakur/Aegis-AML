@@ -189,6 +189,79 @@ def get_cluster_members(cluster_id: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# run wallets (aggregated view)
+# ---------------------------------------------------------------------------
+
+def get_run_wallets(run_id: str) -> list[dict]:
+    """Build a wallet-level view by aggregating cluster members, scores, and suspicious txns."""
+    sb = get_supabase()
+
+    members = list(
+        (sb.table("run_cluster_members")
+         .select("wallet_address, cluster_id")
+         .eq("cluster_id.run_id", run_id)
+         .execute()).data or []
+    )
+
+    clusters = {c["id"]: c for c in get_run_clusters(run_id)}
+    scores = get_run_scores(run_id)
+    suspicious = get_suspicious_txns(run_id)
+
+    score_by_tx: dict[str, dict] = {}
+    for s in scores:
+        tid = s.get("transaction_id")
+        if tid:
+            score_by_tx[tid] = s
+
+    wallet_map: dict[str, dict] = {}
+
+    for m in members:
+        addr = m.get("wallet_address", "")
+        if addr not in wallet_map:
+            wallet_map[addr] = {
+                "wallet_address": addr,
+                "risk_score": 0.0,
+                "risk_level": "low",
+                "suspicious_tx_count": 0,
+                "cluster_count": 0,
+                "clusters": set(),
+                "top_heuristic": None,
+            }
+        w = wallet_map[addr]
+        cid = m.get("cluster_id")
+        if cid and cid not in w["clusters"]:
+            w["clusters"].add(cid)
+            w["cluster_count"] += 1
+            cluster = clusters.get(cid)
+            if cluster:
+                cscore = cluster.get("risk_score", 0) or 0
+                if cscore > w["risk_score"]:
+                    w["risk_score"] = cscore
+                    w["top_heuristic"] = cluster.get("typology")
+
+    for st in suspicious:
+        tid = st.get("transaction_id", "")
+        sc = score_by_tx.get(tid, {})
+        sender = sc.get("sender_wallet") or ""
+        receiver = sc.get("receiver_wallet") or ""
+        for addr in [sender, receiver]:
+            if addr in wallet_map:
+                wallet_map[addr]["suspicious_tx_count"] += 1
+                ms = st.get("meta_score", 0) or 0
+                if ms > wallet_map[addr]["risk_score"]:
+                    wallet_map[addr]["risk_score"] = ms
+                    wallet_map[addr]["risk_level"] = st.get("risk_level", "low")
+                    wallet_map[addr]["top_heuristic"] = st.get("typology")
+
+    result = []
+    for w in wallet_map.values():
+        w.pop("clusters", None)
+        result.append(w)
+    result.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # run_reports
 # ---------------------------------------------------------------------------
 

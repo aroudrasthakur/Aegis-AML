@@ -44,7 +44,7 @@ export interface FlowTxRow {
 }
 
 export interface FlowCluster {
-  key: "A" | "B" | "C";
+  key: string;
   name: string;
   typology: string;
   typologyShort: string;

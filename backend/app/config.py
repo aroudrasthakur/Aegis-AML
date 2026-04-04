@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # When true, use CUDA (XGBoost + PyTorch) or MPS (PyTorch only) when available; else CPU
     ml_use_gpu: bool = False
 
+    openai_api_key: str = ""
+    openai_base_url: str = ""
+    openai_model: str = "gpt-4o-mini"
+
     @property
     def model_dir_path(self) -> Path:
         return Path(self.model_dir)

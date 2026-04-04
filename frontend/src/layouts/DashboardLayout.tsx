@@ -19,8 +19,8 @@ import { ScoringModeProvider } from "@/contexts/ScoringModeProvider";
 import { useScoringMode } from "@/contexts/useScoringMode";
 import { RunProvider } from "@/contexts/RunProvider";
 import { useRunContext } from "@/contexts/useRunContext";
+import { ThresholdProvider } from "@/contexts/ThresholdProvider";
 import { useAuth } from "@/contexts/AuthContext";
-import ScoringModeBanner from "@/components/ScoringModeBanner";
 import UploadModal from "@/components/UploadModal";
 import RunStatusBar from "@/components/RunStatusBar";
 
@@ -310,7 +310,6 @@ function DashboardShell() {
         </header>
 
         {!isFlowExplorer && <RunStatusBar />}
-        {isDashboardHome && !isFlowExplorer && <ScoringModeBanner variant="strip" />}
 
         <main
           className={
@@ -332,7 +331,9 @@ export default function DashboardLayout() {
   return (
     <ScoringModeProvider>
       <RunProvider>
-        <DashboardShell />
+        <ThresholdProvider>
+          <DashboardShell />
+        </ThresholdProvider>
       </RunProvider>
     </ScoringModeProvider>
   );

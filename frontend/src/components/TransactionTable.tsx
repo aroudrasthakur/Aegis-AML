@@ -7,6 +7,11 @@ import {
   formatRiskLevel,
   truncateAddress,
 } from "@/utils/formatters";
+import { useThresholds } from "@/contexts/ThresholdProvider";
+import {
+  riskBarClassFromScore,
+  riskBadgeClassFromScore,
+} from "@/utils/riskTiers";
 import { LensDots } from "./LensDots";
 
 export interface TransactionTableProps {
@@ -28,31 +33,6 @@ type SortKey =
   | "timestamp"
   | "typology_tag";
 
-function riskBarClasses(score: number | null | undefined): string {
-  if (score == null) {
-    return "bg-[#2d3748]";
-  }
-  if (score >= 0.75) return "bg-[var(--color-aegis-red)]";
-  if (score >= 0.5) return "bg-[var(--color-aegis-amber)]";
-  if (score >= 0.25) return "bg-[#fbbf24]";
-  return "bg-[var(--color-aegis-green)]";
-}
-
-function riskBadgeClasses(score: number | null | undefined): string {
-  if (score == null) {
-    return "border border-[var(--color-aegis-border)] bg-[#0d1117] text-[var(--color-aegis-muted)]";
-  }
-  if (score >= 0.75) {
-    return "border border-red-500/40 bg-red-950/40 text-[#ff8a9d]";
-  }
-  if (score >= 0.5) {
-    return "border border-amber-500/30 bg-amber-950/30 text-[#fcd34d]";
-  }
-  if (score >= 0.25) {
-    return "border border-yellow-500/20 bg-yellow-950/20 text-[#fde68a]";
-  }
-  return "border border-emerald-500/25 bg-emerald-950/25 text-[#6ee7b7]";
-}
 
 export default function TransactionTable({
   transactions,
@@ -60,6 +40,7 @@ export default function TransactionTable({
   selectedId = null,
   variant = "standard",
 }: TransactionTableProps) {
+  const { config: tierConfig } = useThresholds();
   const [sortKey, setSortKey] = useState<SortKey>(
     variant === "queue" ? "risk_score" : "timestamp",
   );
@@ -211,7 +192,7 @@ export default function TransactionTable({
                           </span>
                           <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-[#060810]">
                             <div
-                              className={`h-full rounded-full transition-all ${riskBarClasses(risk)}`}
+                              className={`h-full rounded-full transition-all ${riskBarClassFromScore(risk, tierConfig)}`}
                               style={{
                                 width: `${Math.min(100, (risk ?? 0) * 100)}%`,
                               }}
@@ -231,7 +212,7 @@ export default function TransactionTable({
                   );
                 }
 
-                const riskMeta = formatRiskLevel(risk);
+                const riskMeta = formatRiskLevel(risk, tierConfig);
                 const riskLabel =
                   risk == null
                     ? "—"
@@ -253,7 +234,7 @@ export default function TransactionTable({
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClasses(risk)}`}
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(risk, tierConfig)}`}
                       >
                         {riskLabel}
                       </span>

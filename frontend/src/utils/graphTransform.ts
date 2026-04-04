@@ -1,4 +1,5 @@
 import type { CytoscapeElement } from "../types/graph";
+import { riskColorFromScore, type RiskTierConfig } from "./riskTiers";
 
 interface ApiNode {
   id: string;
@@ -27,15 +28,10 @@ type ApiGraph = ApiGraphSeparate | ApiGraphFlat;
 
 export type { CytoscapeElement } from "../types/graph";
 
-function riskToColor(score: number | undefined): string {
-  if (score === undefined) return "#6b7280";
-  if (score >= 0.75) return "#ef4444";
-  if (score >= 0.5) return "#f97316";
-  if (score >= 0.25) return "#eab308";
-  return "#22c55e";
-}
-
-export function apiGraphToCytoscape(graph: ApiGraph): CytoscapeElement[] {
+export function apiGraphToCytoscape(
+  graph: ApiGraph,
+  tierConfig?: RiskTierConfig | null,
+): CytoscapeElement[] {
   if ("elements" in graph && Array.isArray(graph.elements)) {
     return graph.elements;
   }
@@ -50,7 +46,7 @@ export function apiGraphToCytoscape(graph: ApiGraph): CytoscapeElement[] {
         ...rest,
         id,
         label: label ?? id,
-        color: riskToColor(risk_score),
+        color: riskColorFromScore(risk_score, tierConfig ?? null),
       },
     });
   }

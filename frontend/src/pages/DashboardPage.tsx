@@ -3,10 +3,11 @@ import { AlertTriangle, Flame, Loader2 } from "lucide-react";
 import RiskSummaryCards from "@/components/RiskSummaryCards";
 import TransactionTable from "@/components/TransactionTable";
 import LensRadarChart from "@/components/LensRadarChart";
-import TypologyHeatmap from "@/components/TypologyHeatmap";
 import ModelPerformanceChart from "@/components/ModelPerformanceChart";
+import RunSelectorDropdown from "@/components/RunSelectorDropdown";
 import { useRunContext } from "@/contexts/useRunContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useThresholds } from "@/contexts/ThresholdProvider";
 import {
   fetchDashboardStats,
   fetchModelMetrics,
@@ -33,6 +34,7 @@ function greetingForNow(): string {
 export default function DashboardPage() {
   const { runs, activeRun } = useRunContext();
   const { profile, user } = useAuth();
+  const { config: tierConfig } = useThresholds();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [modelMetrics, setModelMetrics] = useState<ModelMetricsResponse["metrics"]>(null);
   const [thresholdCfg, setThresholdCfg] = useState<ThresholdResponse["threshold"]>(null);
@@ -40,6 +42,25 @@ export default function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [queueFilter, setQueueFilter] = useState<"all" | "critical">("all");
   const [loading, setLoading] = useState(true);
+
+  // Page-local run selection (not global activeRun)
+  const completedRuns = useMemo(
+    () => runs.filter((r) => r.status === "completed"),
+    [runs],
+  );
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  // Auto-select latest completed run when runs load
+  useEffect(() => {
+    if (!selectedRunId && completedRuns.length > 0) {
+      setSelectedRunId(completedRuns[0].id);
+    }
+  }, [completedRuns, selectedRunId]);
+
+  const selectedRun = useMemo(
+    () => completedRuns.find((r) => r.id === selectedRunId) ?? null,
+    [completedRuns, selectedRunId],
+  );
 
   const displayName = useMemo(() => {
     if (profile) return `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
@@ -50,7 +71,6 @@ export default function DashboardPage() {
     return meta || user?.email?.split("@")[0] || "Analyst";
   }, [profile, user]);
 
-  // Fetch dashboard data on mount and whenever runs change
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -62,16 +82,35 @@ export default function DashboardPage() {
       setStats(s);
       setModelMetrics(mm.metrics);
       setThresholdCfg(tc.threshold);
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      // Load suspicious transactions from latest completed run as the risk queue
-      const latestCompleted = runs.find((r) => r.status === "completed");
-      if (latestCompleted) {
-        const sus = await fetchRunSuspicious(latestCompleted.id);
-        const report = await fetchRunReport(latestCompleted.id).catch(() => null);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Load suspicious txns for the selected run
+  useEffect(() => {
+    if (!selectedRunId) {
+      setQueue([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sus, report] = await Promise.all([
+          fetchRunSuspicious(selectedRunId),
+          fetchRunReport(selectedRunId).catch(() => null),
+        ]);
+        if (cancelled) return;
         const topTxns = report?.content?.top_suspicious_transactions ?? [];
 
         const rows: TransactionQueueRow[] = sus.map((t) => {
-          const detail = topTxns.find((d) => d.transaction_id === t.transaction_id);
+          const detail = topTxns.find((d: { transaction_id: string }) => d.transaction_id === t.transaction_id);
           return {
             id: t.id,
             display_ref: `TX-${t.transaction_id.slice(0, 6)}`,
@@ -103,25 +142,22 @@ export default function DashboardPage() {
         });
         rows.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
         setQueue(rows);
-        if (rows.length > 0 && !selectedId) setSelectedId(rows[0].id);
-      } else {
-        setQueue([]);
+        if (rows.length > 0) setSelectedId(rows[0].id);
+        else setSelectedId(null);
+      } catch {
+        if (!cancelled) setQueue([]);
       }
-    } catch {
-      /* silent */
-    } finally {
-      setLoading(false);
-    }
-  }, [runs, selectedId]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedRunId]);
 
   const filteredQueue = useMemo(() => {
-    if (queueFilter === "critical") return queue.filter((r) => (r.risk_score ?? 0) >= 0.75);
+    if (queueFilter === "critical") {
+      const cutoff = tierConfig?.highRiskThreshold ?? 0.9;
+      return queue.filter((r) => (r.risk_score ?? 0) >= cutoff);
+    }
     return queue;
-  }, [queue, queueFilter]);
+  }, [queue, queueFilter, tierConfig]);
 
   useEffect(() => {
     if (selectedId == null) return;
@@ -152,30 +188,36 @@ export default function DashboardPage() {
   const precision = thresholdCfg?.precision_at_threshold ?? 0;
   const f1 = thresholdCfg?.optimal_f1 ?? 0;
 
+  // KPI summary from the selected run
   const summary = useMemo(
     () => ({
-      criticalAlerts: stats?.total_suspicious ?? 0,
-      txnsScored: stats?.total_txns_scored ?? 0,
-      networkCases: stats?.total_clusters ?? 0,
+      criticalAlerts: selectedRun?.suspicious_tx_count ?? stats?.total_suspicious ?? 0,
+      txnsScored: selectedRun?.total_txns ?? stats?.total_txns_scored ?? 0,
+      networkCases: selectedRun?.suspicious_cluster_count ?? stats?.total_clusters ?? 0,
       heuristicsFired: stats?.completed_runs ?? 0,
       deltas: undefined,
       trends: {
-        criticalAlerts: stats?.latest_suspicious
-          ? `latest run: ${stats.latest_suspicious}`
-          : "no runs yet",
-        txnsScored: stats?.latest_txns
-          ? `latest run: ${stats.latest_txns.toLocaleString()}`
-          : "no runs yet",
-        networkCases: stats?.latest_clusters
-          ? `latest run: ${stats.latest_clusters}`
-          : "no runs yet",
+        criticalAlerts: selectedRun
+          ? `run: ${selectedRun.suspicious_tx_count} suspicious`
+          : stats?.latest_suspicious
+            ? `latest run: ${stats.latest_suspicious}`
+            : "no runs yet",
+        txnsScored: selectedRun
+          ? `run: ${selectedRun.total_txns.toLocaleString()} scored`
+          : stats?.latest_txns
+            ? `latest run: ${stats.latest_txns.toLocaleString()}`
+            : "no runs yet",
+        networkCases: selectedRun
+          ? `run: ${selectedRun.suspicious_cluster_count} clusters`
+          : stats?.latest_clusters
+            ? `latest run: ${stats.latest_clusters}`
+            : "no runs yet",
         heuristicsFired: `${stats?.completed_runs ?? 0} completed`,
       },
     }),
-    [stats],
+    [stats, selectedRun],
   );
 
-  // Build model performance metrics from real data
   const perfMetrics: ModelPerformanceMetric[] = useMemo(() => {
     if (!modelMetrics?.feature_importance) return [];
     const fi = modelMetrics.feature_importance;
@@ -229,21 +271,24 @@ export default function DashboardPage() {
           <p className="mt-1 font-data text-sm text-[#9aa7b8]">
             Here&apos;s your risk overview —{" "}
             <span className="text-[#f87171]/95">
-              {stats?.total_suspicious ?? 0} suspicious
+              {selectedRun?.suspicious_tx_count ?? stats?.total_suspicious ?? 0} suspicious
             </span>{" "}
-            across {stats?.completed_runs ?? 0} runs.
+            {selectedRun
+              ? `in ${selectedRun.label ?? `run ${selectedRun.id.slice(0, 8)}`}`
+              : `across ${stats?.completed_runs ?? 0} runs`}.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-6 font-mono text-[11px] uppercase tracking-wide text-[#7d8a99]">
-          <div>
-            <p className="text-[#f87171]/95">{stats?.total_suspicious ?? 0} alerts</p>
-          </div>
-          <div>
+        <div className="flex flex-wrap items-center gap-4">
+          <RunSelectorDropdown
+            runs={runs}
+            selectedRunId={selectedRunId}
+            onSelect={setSelectedRunId}
+          />
+          <div className="flex flex-wrap items-end gap-6 font-mono text-[11px] uppercase tracking-wide text-[#7d8a99]">
+            <p className="text-[#f87171]/95">{selectedRun?.suspicious_tx_count ?? stats?.total_suspicious ?? 0} alerts</p>
             <p className="text-[#34d399]/95">{recall.toFixed(2)} recall</p>
-          </div>
-          <div>
             <p className="text-[#7dd3fc]/95">
-              {((stats?.total_txns_scored ?? 0) / 1000).toFixed(1)}k scored
+              {(((selectedRun?.total_txns ?? stats?.total_txns_scored ?? 0)) / 1000).toFixed(1)}k scored
             </p>
           </div>
         </div>
@@ -260,7 +305,7 @@ export default function DashboardPage() {
               </h2>
               <p className="mt-0.5 font-data text-xs text-[#9aa7b8]">
                 {queue.length > 0
-                  ? `${queue.length} suspicious transactions from latest run`
+                  ? `${queue.length} suspicious transactions from selected run`
                   : "No suspicious transactions yet — upload CSVs and run the pipeline"}
               </p>
             </div>
@@ -327,7 +372,6 @@ export default function DashboardPage() {
             </>
           )}
 
-          {/* Active run status */}
           {activeRun && activeRun.status === "running" && (
             <div className="rounded-xl border border-[#60a5fa]/20 bg-[#0d1117] p-4">
               <div className="flex items-center gap-2">
@@ -348,7 +392,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Live alerts from latest run */}
           {stats?.latest_run && (
             <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-4">
               <h3 className="font-display text-sm font-semibold text-[#e6edf3]">
@@ -377,10 +420,11 @@ export default function DashboardPage() {
         </aside>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TypologyHeatmap />
-        {perfMetrics.length > 0 && <ModelPerformanceChart metrics={perfMetrics} />}
-      </div>
+      {perfMetrics.length > 0 && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ModelPerformanceChart metrics={perfMetrics} />
+        </div>
+      )}
     </div>
   );
 }

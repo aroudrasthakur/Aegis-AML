@@ -169,6 +169,14 @@ async def get_run(run_id: str, user_id: CurrentUserId):
     return run
 
 
+@router.get("/{run_id}/scores")
+async def get_run_scores(run_id: str, user_id: CurrentUserId):
+    """Return all score rows for a given run."""
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
+    return runs_repo.get_run_scores(run_id)
+
+
 @router.get("/{run_id}/report")
 async def get_run_report(run_id: str, user_id: CurrentUserId):
     if not runs_repo.get_run(run_id, user_id):
@@ -179,11 +187,48 @@ async def get_run_report(run_id: str, user_id: CurrentUserId):
     return report
 
 
+@router.get("/{run_id}/report/summary")
+async def get_report_summary(run_id: str, user_id: CurrentUserId):
+    """Return cached LLM summary for a run report."""
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
+    from app.services.summary_service import get_run_report_summary
+    result = get_run_report_summary(run_id)
+    if not result:
+        raise HTTPException(404, "No summary generated for this run yet")
+    return result
+
+
+@router.post("/{run_id}/report/summary")
+async def generate_report_summary(run_id: str, user_id: CurrentUserId, force: bool = False):
+    """Generate an LLM summary for a run report (idempotent unless force=true)."""
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
+    from app.services.summary_service import generate_run_report_summary
+    try:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, lambda: generate_run_report_summary(run_id, force=force)
+        )
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+
+
 @router.get("/{run_id}/suspicious")
 async def get_suspicious(run_id: str, user_id: CurrentUserId):
     if not runs_repo.get_run(run_id, user_id):
         raise HTTPException(404, "Run not found")
     return runs_repo.get_suspicious_txns(run_id)
+
+
+@router.get("/{run_id}/wallets")
+async def get_run_wallets(run_id: str, user_id: CurrentUserId):
+    """Aggregate wallet-level data from cluster members, scores, and suspicious txns."""
+    run = runs_repo.get_run(run_id, user_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    return runs_repo.get_run_wallets(run_id)
 
 
 @router.get("/{run_id}/clusters")

@@ -22,15 +22,21 @@ export function formatDate(value: string): string {
   });
 }
 
-export function formatRiskLevel(score: number | null): {
-  label: string;
-  color: string;
-} {
-  if (score === null) return { label: "Unknown", color: "text-gray-400" };
-  if (score >= 0.75) return { label: "Critical", color: "text-red-400" };
-  if (score >= 0.5) return { label: "High", color: "text-orange-400" };
-  if (score >= 0.25) return { label: "Medium", color: "text-yellow-400" };
-  return { label: "Low", color: "text-green-400" };
+import {
+  resolveRiskTier,
+  riskTierLabel,
+  riskTierTextClass,
+  type RiskTierConfig,
+} from "./riskTiers";
+
+export function formatRiskLevel(
+  score: number | null,
+  config?: RiskTierConfig | null,
+  backendLevel?: string | null,
+): { label: string; color: string } {
+  const tier = resolveRiskTier(score, config ?? null, backendLevel);
+  if (!tier) return { label: "Unknown", color: "text-gray-400" };
+  return { label: riskTierLabel(tier), color: riskTierTextClass(tier) };
 }
 
 export function truncateAddress(address: string, chars = 6): string {

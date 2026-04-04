@@ -45,10 +45,59 @@ export async function fetchRunReport(runId: string): Promise<RunReport> {
   return data;
 }
 
+export async function fetchRunScores(
+  runId: string,
+): Promise<Record<string, unknown>[]> {
+  const { data } = await client.get(`/runs/${runId}/scores`);
+  return data;
+}
+
 export async function fetchRunSuspicious(
   runId: string,
 ): Promise<RunSuspiciousTx[]> {
   const { data } = await client.get(`/runs/${runId}/suspicious`);
+  return data;
+}
+
+export interface RunWallet {
+  wallet_address: string;
+  risk_score: number;
+  risk_level: string;
+  suspicious_tx_count: number;
+  cluster_count: number;
+  top_heuristic: string | null;
+}
+
+export async function fetchRunWallets(
+  runId: string,
+): Promise<RunWallet[]> {
+  const { data } = await client.get(`/runs/${runId}/wallets`);
+  return data;
+}
+
+export interface ReportSummary {
+  summary_text: string;
+  summary_model: string | null;
+  summary_generated_at: string | null;
+  cached?: boolean;
+}
+
+export async function fetchReportSummary(
+  runId: string,
+): Promise<ReportSummary> {
+  const { data } = await client.get(`/runs/${runId}/report/summary`);
+  return data;
+}
+
+export async function generateReportSummary(
+  runId: string,
+  force = false,
+): Promise<ReportSummary> {
+  const { data } = await client.post(
+    `/runs/${runId}/report/summary`,
+    null,
+    { params: { force } },
+  );
   return data;
 }
 

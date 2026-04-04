@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 import type { Transaction } from "@/types/transaction";
+import { useThresholds } from "@/contexts/ThresholdProvider";
+import { riskColorFromScore } from "@/utils/riskTiers";
 
 export interface FlowTimelineProps {
   transactions: Transaction[];
@@ -11,19 +13,14 @@ const PLOT_BG = "#0d1117";
 const TEXT = "#9aa7b8";
 const GRID = "rgba(255,255,255,0.06)";
 
-function riskToColor(score: number | null | undefined): string {
-  if (score == null) return "#5c6b7f";
-  if (score >= 0.75) return "#ff4d6d";
-  if (score >= 0.5) return "#f59e0b";
-  if (score >= 0.25) return "#fbbf24";
-  return "#00e5a0";
-}
-
 export default function FlowTimeline({ transactions }: FlowTimelineProps) {
+  const { config: tierConfig } = useThresholds();
   const { data, layout } = useMemo(() => {
     const xs = transactions.map((t) => t.timestamp);
     const ys = transactions.map((t) => t.amount);
-    const colors = transactions.map((t) => riskToColor(t.risk_score ?? null));
+    const colors = transactions.map((t) =>
+      riskColorFromScore(t.risk_score ?? undefined, tierConfig),
+    );
     const ids = transactions.map((t) => t.transaction_id);
 
     const trace: Partial<Data> = {
@@ -62,7 +59,7 @@ export default function FlowTimeline({ transactions }: FlowTimelineProps) {
     };
 
     return { data: [trace], layout: plotLayout };
-  }, [transactions]);
+  }, [transactions, tierConfig]);
 
   if (transactions.length === 0) {
     return (

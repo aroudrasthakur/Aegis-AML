@@ -1,37 +1,28 @@
 import type { Wallet, WalletScore } from "@/types/wallet";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/formatters";
+import { useThresholds } from "@/contexts/ThresholdProvider";
+import {
+  resolveRiskTier,
+  riskTierLabel,
+  riskBarClassFromScore,
+} from "@/utils/riskTiers";
 import HeuristicBadges from "./HeuristicBadges";
 
 export interface WalletDetailPanelProps {
   wallet: Wallet | null;
   score?: WalletScore | null;
-  /** Heuristic IDs to show as badges (e.g. from last investigation) */
   triggeredHeuristicIds?: number[];
-  /** Tooltip text keyed by heuristic id string */
   heuristicExplanations?: Record<string, string>;
-}
-
-function scoreBarColor(value: number): string {
-  if (value >= 0.75) return "bg-[var(--color-aegis-red)]";
-  if (value >= 0.5) return "bg-[var(--color-aegis-amber)]";
-  if (value >= 0.25) return "bg-[#fbbf24]";
-  return "bg-[var(--color-aegis-green)]";
-}
-
-function riskTier(risk: number | null): string {
-  if (risk == null) return "UNSCORED";
-  if (risk >= 0.75) return "CRITICAL";
-  if (risk >= 0.5) return "HIGH";
-  if (risk >= 0.25) return "ELEVATED";
-  return "LOW";
 }
 
 function SubScoreRow({
   label,
   value,
+  tierConfig,
 }: {
   label: string;
   value: number | null | undefined;
+  tierConfig: import("@/utils/riskTiers").RiskTierConfig | null;
 }) {
   if (value == null) {
     return (
@@ -52,7 +43,7 @@ function SubScoreRow({
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-[#060810]">
         <div
-          className={`h-full rounded-full ${scoreBarColor(value)}`}
+          className={`h-full rounded-full ${riskBarClassFromScore(value, tierConfig)}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -66,6 +57,8 @@ export default function WalletDetailPanel({
   triggeredHeuristicIds = [],
   heuristicExplanations = {},
 }: WalletDetailPanelProps) {
+  const { config: tierConfig } = useThresholds();
+
   if (!wallet) {
     return (
       <aside className="h-full rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-6">
@@ -93,7 +86,10 @@ export default function WalletDetailPanel({
       )}
 
       <div className="mt-4 inline-flex rounded border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1 font-data text-[10px] font-medium uppercase tracking-wide text-[var(--color-aegis-amber)]">
-        Risk tier · {riskTier(risk)}
+        Risk tier · {(() => {
+          const tier = resolveRiskTier(risk, tierConfig);
+          return tier ? riskTierLabel(tier).toUpperCase() : "UNSCORED";
+        })()}
       </div>
 
       <dl className="mt-6 space-y-3 font-data text-sm">
@@ -147,7 +143,7 @@ export default function WalletDetailPanel({
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#060810]">
               <div
-                className={`h-full rounded-full ${scoreBarColor(risk)}`}
+                className={`h-full rounded-full ${riskBarClassFromScore(risk, tierConfig)}`}
                 style={{ width: `${riskPct}%` }}
               />
             </div>
@@ -160,10 +156,10 @@ export default function WalletDetailPanel({
           <h3 className="font-data text-xs font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">
             Score breakdown
           </h3>
-          <SubScoreRow label="Fan-in" value={score.fan_in_score} />
-          <SubScoreRow label="Fan-out" value={score.fan_out_score} />
-          <SubScoreRow label="Velocity" value={score.velocity_score} />
-          <SubScoreRow label="Exposure" value={score.exposure_score} />
+          <SubScoreRow label="Fan-in" value={score.fan_in_score} tierConfig={tierConfig} />
+          <SubScoreRow label="Fan-out" value={score.fan_out_score} tierConfig={tierConfig} />
+          <SubScoreRow label="Velocity" value={score.velocity_score} tierConfig={tierConfig} />
+          <SubScoreRow label="Exposure" value={score.exposure_score} tierConfig={tierConfig} />
         </div>
       )}
 
