@@ -12,6 +12,12 @@
   --color-aegis-purple: #7c5cfc;
   --color-aegis-amber: #f59e0b;
   --color-aegis-muted: #8b9cb3;
+
+  /* Scrollbars — integrated “terminal” look */
+  --color-aegis-scrollbar-track: transparent;
+  --color-aegis-scrollbar-thumb: rgba(139, 156, 179, 0.38);
+  --color-aegis-scrollbar-thumb-hover: rgba(0, 229, 160, 0.5);
+  --aegis-scrollbar-width: 6px;
 }
 
 @layer base {
@@ -29,6 +35,69 @@
 
   .font-data {
     font-family: var(--font-mono);
+  }
+
+  /* -------------------------------------------------------------------------
+   * Custom scrollbars (Chrome / Edge / Safari / Firefox)
+   * Slim thumb, no arrow buttons, track blends into #060810 surfaces.
+   * ------------------------------------------------------------------------- */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-aegis-scrollbar-thumb) var(--color-aegis-scrollbar-track);
+  }
+
+  *::-webkit-scrollbar {
+    width: var(--aegis-scrollbar-width);
+    height: var(--aegis-scrollbar-width);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--color-aegis-scrollbar-track);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-aegis-scrollbar-thumb);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-aegis-scrollbar-thumb-hover);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Hide legacy up/down arrow buttons (Windows classic scrollbars) */
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /**
+   * Optional: slightly wider, higher-contrast thumb inside dense lists
+   * (e.g. cluster wallet / suspicious TX panels).
+   */
+  .aegis-scroll {
+    scrollbar-color: rgba(139, 156, 179, 0.5) var(--color-aegis-scrollbar-track);
+  }
+
+  .aegis-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .aegis-scroll::-webkit-scrollbar-thumb {
+    background: rgba(139, 156, 179, 0.5);
+  }
+
+  .aegis-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 229, 160, 0.55);
   }
 }
 

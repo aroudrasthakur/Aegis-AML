@@ -224,7 +224,7 @@ function DashboardShell() {
           </div>
         </div>
 
-        <nav className="mt-1 flex flex-1 flex-col overflow-y-auto pb-2">
+        <nav className="aegis-scroll mt-1 flex flex-1 flex-col overflow-y-auto pb-2">
           <NavBlock title="Main" items={NAV_MAIN} />
           <NavBlock title="Analysis" items={NAV_ANALYSIS} />
         </nav>

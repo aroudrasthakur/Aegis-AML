@@ -268,7 +268,7 @@ export default function FlowExplorerPage() {
                   <h3 className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-[#6b7c90]">
                     Wallets in cluster
                   </h3>
-                  <ul className="max-h-40 space-y-1 overflow-y-auto">
+                  <ul className="aegis-scroll max-h-40 space-y-1 overflow-y-auto pr-1">
                     {members.map((m) => (
                       <li
                         key={m.wallet_address}
@@ -288,7 +288,7 @@ export default function FlowExplorerPage() {
                     <AlertTriangle className="h-3 w-3 text-[#f87171]" />
                     Suspicious transactions
                   </h3>
-                  <ul className="max-h-48 space-y-1 overflow-y-auto">
+                  <ul className="aegis-scroll max-h-48 space-y-1 overflow-y-auto pr-1">
                     {clusterSusTxns.map((t) => (
                       <li
                         key={t.id}
