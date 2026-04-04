@@ -16,8 +16,11 @@ import {
   LogOut,
 } from "lucide-react";
 import { ScoringModeProvider, useScoringMode } from "@/contexts/ScoringModeContext";
+import { RunProvider, useRunContext } from "@/contexts/RunContext";
 import { useAuth } from "@/contexts/AuthContext";
 import ScoringModeBanner from "@/components/ScoringModeBanner";
+import UploadModal from "@/components/UploadModal";
+import RunStatusBar from "@/components/RunStatusBar";
 
 const NAV_MAIN: {
   to: string;
@@ -97,7 +100,9 @@ function DashboardShell() {
   const [notif] = useState(4);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const { mode } = useScoringMode();
+  const { activeRun } = useRunContext();
   const { profile, user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -267,6 +272,7 @@ function DashboardShell() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => setUploadOpen(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-3 py-2 font-data text-xs text-[#e6edf3] hover:border-[#34d399]/35"
             >
               <Upload className="h-4 w-4" aria-hidden />
@@ -274,10 +280,12 @@ function DashboardShell() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-3 py-2 font-data text-xs text-[#e6edf3] hover:border-[#34d399]/35"
+              onClick={() => setUploadOpen(true)}
+              disabled={activeRun?.status === "running"}
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-3 py-2 font-data text-xs text-[#e6edf3] hover:border-[#34d399]/35 disabled:opacity-40"
             >
               <Play className="h-4 w-4" aria-hidden />
-              Run Pipeline
+              {activeRun?.status === "running" ? "Running…" : "Run Pipeline"}
             </button>
             <button
               type="button"
@@ -301,12 +309,15 @@ function DashboardShell() {
           </div>
         </header>
 
+        <RunStatusBar />
         {isDashboardHome && <ScoringModeBanner variant="strip" />}
 
         <main className="flex-1 px-6 py-6">
           <Outlet />
         </main>
       </div>
+
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }
@@ -314,7 +325,9 @@ function DashboardShell() {
 export default function DashboardLayout() {
   return (
     <ScoringModeProvider>
-      <DashboardShell />
+      <RunProvider>
+        <DashboardShell />
+      </RunProvider>
     </ScoringModeProvider>
   );
 }

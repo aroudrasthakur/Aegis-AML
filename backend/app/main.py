@@ -11,6 +11,7 @@ from app.api.routes_explanations import router as explanations_router
 from app.api.routes_reports import router as reports_router
 from app.api.routes_metrics import router as metrics_router
 from app.api.routes_policies import router as policies_router
+from app.api.routes_runs import router as runs_router
 
 app = FastAPI(
     title="Aegis AML",
@@ -40,6 +41,7 @@ app.include_router(explanations_router, prefix="/api/explanations", tags=["Expla
 app.include_router(reports_router, prefix="/api/reports", tags=["Reports"])
 app.include_router(metrics_router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(policies_router, prefix="/api/policies", tags=["Policies"])
+app.include_router(runs_router, prefix="/api/runs", tags=["Pipeline Runs"])
 
 
 @app.get("/health")
