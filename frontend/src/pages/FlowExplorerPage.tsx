@@ -1,17 +1,58 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
 import { FlowCanvas, type FlowHoverPayload } from "@/components/flow-explorer/FlowCanvas";
-import { FLOW_EXPLORER_CLUSTERS } from "@/data/flowExplorerClusters";
 import type { FlowCluster } from "@/types/flowExplorer";
+import type { RunCluster } from "@/types/run";
 import { useRunContext } from "@/contexts/useRunContext";
+import {
+  fetchClusterGraph,
+  fetchRunClusters,
+  fetchRunSuspicious,
+} from "@/api/runs";
+import { buildFlowClusterFromSnapshot } from "@/utils/flowExplorerFromRun";
 
-const DEMO_RUN_LABELS = ["0x7a3f…c2d1", "0x9b1e…8a4f", "0x2c88…01ab", "0xf4d2…90e3"];
+const CLUSTER_TAB_HUES = ["#EF4444", "#F97316", "#F59E0B", "#34d399", "#a78bfa", "#7dd3fc"];
 
 function formatRunHash(id: string): string {
   if (id.length <= 12) return id;
   return `${id.slice(0, 6)}…${id.slice(-4)}`;
 }
+
+const EMPTY_LIVE_CLUSTER: FlowCluster = {
+  key: "empty",
+  name: "No clusters in this run",
+  typology: "—",
+  typologyShort: "—",
+  risk: 0,
+  riskColor: "#6b7c90",
+  riskLabel: "—",
+  wallets: 0,
+  tx: 0,
+  totalAmount: "—",
+  heuristics: [],
+  wlist: [],
+  txlist: [],
+  nodes: [],
+  edges: [],
+};
+
+const NO_COMPLETED_RUNS_CLUSTER: FlowCluster = {
+  key: "no-completed-runs",
+  name: "Complete a pipeline run first",
+  typology: "—",
+  typologyShort: "—",
+  risk: 0,
+  riskColor: "#6b7c90",
+  riskLabel: "—",
+  wallets: 0,
+  tx: 0,
+  totalAmount: "—",
+  heuristics: [],
+  wlist: [],
+  txlist: [],
+  nodes: [],
+  edges: [],
+};
 
 export default function FlowExplorerPage() {
   const navigate = useNavigate();
@@ -20,60 +61,129 @@ export default function FlowExplorerPage() {
     () => runs.filter((r) => r.status === "completed"),
     [runs],
   );
-  const runOptions = useMemo(() => {
-    if (completed.length === 0) return DEMO_RUN_LABELS;
-    return completed.map((r) => formatRunHash(r.id));
-  }, [completed]);
 
   const [runIdx, setRunIdx] = useState(0);
   const [clusterIdx, setClusterIdx] = useState(0);
+  const [clustersForRun, setClustersForRun] = useState<RunCluster[]>([]);
+  const [liveCluster, setLiveCluster] = useState<FlowCluster | null>(null);
+  const [loadingLive, setLoadingLive] = useState(false);
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [walletRowAddr, setWalletRowAddr] = useState<string | null>(null);
   const [hover, setHover] = useState<FlowHoverPayload | null>(null);
 
-  const cluster: FlowCluster = FLOW_EXPLORER_CLUSTERS[clusterIdx]!;
+  const hasCompletedRuns = completed.length > 0;
+  const activeRunId = useMemo(() => {
+    if (!hasCompletedRuns) return undefined;
+    const i = Math.min(runIdx, completed.length - 1);
+    return completed[i]?.id;
+  }, [hasCompletedRuns, runIdx, completed]);
 
   useEffect(() => {
     setRunIdx((i) =>
-      runOptions.length === 0 ? 0 : Math.min(i, runOptions.length - 1),
+      completed.length === 0 ? 0 : Math.min(i, completed.length - 1),
     );
-  }, [runOptions.length]);
-
-  const activeRunIdForUi =
-    completed.length === 0
-      ? undefined
-      : completed[Math.min(runIdx, completed.length - 1)]?.id;
+  }, [completed.length]);
 
   useEffect(() => {
-    if (!activeRunIdForUi) return;
-    selectRun(activeRunIdForUi);
-  }, [activeRunIdForUi, selectRun]);
+    if (!activeRunId) return;
+    selectRun(activeRunId);
+  }, [activeRunId, selectRun]);
+
+  useEffect(() => {
+    if (!activeRunId) {
+      setClustersForRun([]);
+      setLiveCluster(null);
+      return;
+    }
+    setClusterIdx(0);
+    let cancel = false;
+    (async () => {
+      setLoadingLive(true);
+      try {
+        const list = await fetchRunClusters(activeRunId);
+        if (cancel) return;
+        setClustersForRun(list);
+      } catch {
+        if (!cancel) setClustersForRun([]);
+      } finally {
+        if (!cancel) setLoadingLive(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [activeRunId]);
+
+  useEffect(() => {
+    if (clustersForRun.length === 0) return;
+    setClusterIdx((i) => Math.min(i, clustersForRun.length - 1));
+  }, [clustersForRun]);
+
+  useEffect(() => {
+    if (!activeRunId || clustersForRun.length === 0) {
+      setLiveCluster(null);
+      return;
+    }
+    const idx = Math.min(clusterIdx, clustersForRun.length - 1);
+    const c = clustersForRun[idx];
+    if (!c) return;
+    let cancel = false;
+    (async () => {
+      setLoadingLive(true);
+      try {
+        const [snap, sus] = await Promise.all([
+          fetchClusterGraph(activeRunId, c.id),
+          fetchRunSuspicious(activeRunId),
+        ]);
+        const susC = sus.filter((t) => t.cluster_id === c.id);
+        if (!cancel) setLiveCluster(buildFlowClusterFromSnapshot(c, snap, susC));
+      } catch {
+        if (!cancel) setLiveCluster(null);
+      } finally {
+        if (!cancel) setLoadingLive(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [activeRunId, clusterIdx, clustersForRun]);
+
+  const cluster: FlowCluster = useMemo(() => {
+    if (!hasCompletedRuns) {
+      return NO_COMPLETED_RUNS_CLUSTER;
+    }
+    if (clustersForRun.length === 0) {
+      if (loadingLive) {
+        return { ...EMPTY_LIVE_CLUSTER, name: "Loading clusters…" };
+      }
+      return EMPTY_LIVE_CLUSTER;
+    }
+    if (liveCluster) return liveCluster;
+    if (loadingLive) {
+      return { ...EMPTY_LIVE_CLUSTER, name: "Loading graph…" };
+    }
+    return EMPTY_LIVE_CLUSTER;
+  }, [hasCompletedRuns, clustersForRun.length, liveCluster, loadingLive]);
 
   useEffect(() => {
     setWalletRowAddr(null);
   }, [cluster.key]);
 
-  const cycleRun = useCallback(() => {
-    if (runOptions.length === 0) return;
-    const next = (runIdx + 1) % runOptions.length;
-    setRunIdx(next);
-    if (completed.length > 0) {
-      const run = completed[next % completed.length];
-      if (run) selectRun(run.id);
-    }
-  }, [runIdx, runOptions.length, completed, selectRun]);
-
-  const onWalletRowClick = useCallback((addr: string) => {
-    setWalletRowAddr((prev) => {
-      if (prev === addr) {
-        setSelectedNodeId(null);
-        return null;
-      }
-      const node = cluster.nodes.find((n) => n.label === addr);
-      setSelectedNodeId(node?.id ?? null);
-      return addr;
-    });
-  }, [cluster.nodes]);
+  const onWalletRowClick = useCallback(
+    (addr: string) => {
+      setWalletRowAddr((prev) => {
+        if (prev === addr) {
+          setSelectedNodeId(null);
+          return null;
+        }
+        const node = cluster.nodes.find((n) => n.label === addr);
+        setSelectedNodeId(node?.id ?? null);
+        return addr;
+      });
+    },
+    [cluster.nodes],
+  );
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -87,21 +197,46 @@ export default function FlowExplorerPage() {
   const inactiveTab =
     "border-[var(--color-aegis-border)] bg-transparent hover:border-[#34d399]/35";
 
+  const clusterTabs = useMemo(() => {
+    if (!hasCompletedRuns) {
+      return [{ i: 0, label: "No runs", cr: undefined as RunCluster | undefined }];
+    }
+    if (clustersForRun.length === 0) {
+      return [
+        {
+          i: 0,
+          label: loadingLive ? "Loading…" : "No clusters",
+          cr: undefined as RunCluster | undefined,
+        },
+      ];
+    }
+    return clustersForRun.map((cr, i) => ({
+      i,
+      label: cr.label ?? `Cluster ${i + 1}`,
+      cr,
+    }));
+  }, [hasCompletedRuns, clustersForRun, loadingLive]);
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#060810] text-[#e6edf3]">
       <div className="flex shrink-0 items-stretch gap-2 border-b border-[var(--color-aegis-border)] px-3 py-1.5">
-        <div className="flex min-w-0 flex-1 gap-1.5">
-          {FLOW_EXPLORER_CLUSTERS.map((cl, i) => {
-            const active = i === clusterIdx;
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+          {clusterTabs.map((tab, tabIndex) => {
+            const active = tabIndex === clusterIdx;
             const activeRing = active
               ? "border-[#34d399]/55 bg-[#34d399]/10"
               : inactiveTab;
+            const cr = tab.cr;
+            const typology = cr?.typology ?? "—";
+            const wallets = cr?.wallet_count ?? 0;
+            const tx = cr?.tx_count ?? 0;
+            const hue = CLUSTER_TAB_HUES[tabIndex % CLUSTER_TAB_HUES.length]!;
             return (
               <button
-                key={cl.key}
+                key={cr?.id ?? `tab-${tabIndex}`}
                 type="button"
                 onClick={() => {
-                  setClusterIdx(i);
+                  setClusterIdx(tabIndex);
                   setSelectedNodeId(null);
                   setWalletRowAddr(null);
                 }}
@@ -109,36 +244,49 @@ export default function FlowExplorerPage() {
               >
                 <span
                   className="font-display text-[12px] font-bold leading-tight"
-                  style={{
-                    color:
-                      cl.key === "A"
-                        ? "#EF4444"
-                        : cl.key === "B"
-                          ? "#F97316"
-                          : "#F59E0B",
-                  }}
+                  style={{ color: hue }}
                 >
-                  {cl.name}
+                  {tab.label}
                 </span>
                 <p className="mt-0.5 truncate font-data text-[9px] text-[#6b7c90]">
-                  {cl.typology} · {cl.wallets}w · {cl.tx}tx
+                  {typology} · {wallets}w · {tx}tx
                 </p>
               </button>
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={cycleRun}
-          disabled={runOptions.length === 0}
-          className="flex shrink-0 items-center gap-1.5 self-center rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-2.5 py-1.5 font-data text-[11px] text-[#e6edf3] hover:border-[#34d399]/35 disabled:opacity-40"
-        >
-          <span className="hidden sm:inline text-[#6b7c90]">Run</span>
-          <span className="tabular-nums">
-            {runOptions.length > 0 ? runOptions[runIdx] : "—"}
+        <label className="flex shrink-0 items-center gap-1.5 self-center">
+          <span className="hidden font-data text-[10px] text-[#6b7c90] sm:inline">
+            Run
           </span>
-          <ChevronDown className="h-3.5 w-3.5 text-[#6b7c90]" aria-hidden />
-        </button>
+          <select
+            value={hasCompletedRuns ? runIdx : 0}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setRunIdx(v);
+              if (completed[v]) selectRun(completed[v]!.id);
+            }}
+            disabled={!hasCompletedRuns}
+            className="max-w-[200px] cursor-pointer rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-2 py-1.5 font-data text-[11px] text-[#e6edf3] hover:border-[#34d399]/35 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Select pipeline run"
+          >
+            {hasCompletedRuns ? (
+              completed.map((r, i) => (
+                <option key={r.id} value={i}>
+                  {formatRunHash(r.id)}
+                  {r.label ? ` · ${r.label}` : ""}
+                </option>
+              ))
+            ) : (
+              <option value={0}>No completed runs</option>
+            )}
+          </select>
+        </label>
+        {loadingLive && (
+          <span className="self-center font-data text-[10px] text-[#6b7c90]">
+            Loading…
+          </span>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -214,80 +362,98 @@ export default function FlowExplorerPage() {
           <div className="mt-4">
             <p className="text-[11px] text-[#6b7c90]">Heuristics triggered</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {cluster.heuristics.map((h) => (
-                <span
-                  key={h.label}
-                  className="rounded-[6px] border px-2 py-0.5 font-data text-[10px]"
-                  style={{
-                    color: h.color,
-                    backgroundColor: h.bg,
-                    borderColor: h.border,
-                  }}
-                >
-                  {h.label}
+              {cluster.heuristics.length === 0 ? (
+                <span className="font-data text-[10px] text-[#6b7c90]">
+                  {hasCompletedRuns ? "See run report for details" : "—"}
                 </span>
-              ))}
+              ) : (
+                cluster.heuristics.map((h) => (
+                  <span
+                    key={h.label}
+                    className="rounded-[6px] border px-2 py-0.5 font-data text-[10px]"
+                    style={{
+                      color: h.color,
+                      backgroundColor: h.bg,
+                      borderColor: h.border,
+                    }}
+                  >
+                    {h.label}
+                  </span>
+                ))
+              )}
             </div>
           </div>
 
           <div className="mt-4">
             <p className="text-[11px] text-[#6b7c90]">Wallets in cluster</p>
             <ul className="mt-2 space-y-1">
-              {cluster.wlist.map((w) => {
-                const active = walletRowAddr === w.addr;
-                return (
-                  <li key={w.addr}>
-                    <button
-                      type="button"
-                      onClick={() => onWalletRowClick(w.addr)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-[8px] border px-2 py-2 text-left transition-colors ${
-                        active
-                          ? "border-[#34d399]/45 bg-[#34d399]/10"
-                          : "border-[var(--color-aegis-border)] bg-[#060810] hover:border-[#34d399]/35"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-data text-[10.5px] text-[#e6edf3]">
-                          {w.addr}
-                        </p>
-                        <p className="text-[10px] text-[#6b7c90]">{w.type}</p>
-                      </div>
-                      <span
-                        className="shrink-0 rounded-[6px] border px-1.5 py-0.5 font-data text-[9px]"
-                        style={{
-                          color: w.badgeColor,
-                          borderColor: `${w.badgeColor}55`,
-                          background: `${w.badgeColor}12`,
-                        }}
+              {cluster.wlist.length === 0 ? (
+                <li className="font-data text-[10px] text-[#6b7c90]">
+                  {cluster.nodes.length === 0 && hasCompletedRuns
+                    ? "No graph snapshot for this cluster."
+                    : "—"}
+                </li>
+              ) : (
+                cluster.wlist.map((w) => {
+                  const active = walletRowAddr === w.addr;
+                  return (
+                    <li key={w.addr}>
+                      <button
+                        type="button"
+                        onClick={() => onWalletRowClick(w.addr)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-[8px] border px-2 py-2 text-left transition-colors ${
+                          active
+                            ? "border-[#34d399]/45 bg-[#34d399]/10"
+                            : "border-[var(--color-aegis-border)] bg-[#060810] hover:border-[#34d399]/35"
+                        }`}
                       >
-                        {w.badge}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
+                        <div className="min-w-0">
+                          <p className="truncate font-data text-[10.5px] text-[#e6edf3]">
+                            {w.addr}
+                          </p>
+                          <p className="text-[10px] text-[#6b7c90]">{w.type}</p>
+                        </div>
+                        <span
+                          className="shrink-0 rounded-[6px] border px-1.5 py-0.5 font-data text-[9px]"
+                          style={{
+                            color: w.badgeColor,
+                            borderColor: `${w.badgeColor}55`,
+                            background: `${w.badgeColor}12`,
+                          }}
+                        >
+                          {w.badge}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
             </ul>
           </div>
 
           <div className="mt-4">
             <p className="text-[11px] text-[#6b7c90]">Suspicious transactions</p>
             <ul className="mt-2 space-y-1">
-              {cluster.txlist.map((t) => (
-                <li
-                  key={t.hash}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-data text-[10.5px] text-[#6ee7b7]">
-                      {t.hash}
-                    </p>
-                    <p className="truncate text-[10px] text-[#9aa7b8]">{t.route}</p>
-                  </div>
-                  <span className="shrink-0 font-data text-[10.5px] tabular-nums text-[#f87171]">
-                    {t.amount}
-                  </span>
-                </li>
-              ))}
+              {cluster.txlist.length === 0 ? (
+                <li className="font-data text-[10px] text-[#6b7c90]">—</li>
+              ) : (
+                cluster.txlist.map((t) => (
+                  <li
+                    key={t.hash}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-data text-[10.5px] text-[#6ee7b7]">
+                        {t.hash}
+                      </p>
+                      <p className="truncate text-[10px] text-[#9aa7b8]">{t.route}</p>
+                    </div>
+                    <span className="shrink-0 font-data text-[10.5px] tabular-nums text-[#f87171]">
+                      {t.amount}
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
 

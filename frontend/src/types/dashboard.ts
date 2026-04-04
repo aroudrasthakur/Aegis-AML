@@ -23,6 +23,13 @@ export interface DashboardTrendNotes {
   heuristicsFired: string;
 }
 
+export interface DashboardSparkSeries {
+  criticalAlerts: number[];
+  txnsScored: number[];
+  networkCases: number[];
+  heuristicsFired: number[];
+}
+
 export interface DashboardSummary {
   criticalAlerts: number;
   txnsScored: number;
@@ -30,6 +37,8 @@ export interface DashboardSummary {
   heuristicsFired: number;
   deltas?: DashboardMetricDeltas;
   trends?: DashboardTrendNotes;
+  /** Per completed run (oldest → newest), up to ~12 points — drives spark bars. */
+  sparkSeries?: DashboardSparkSeries;
 }
 
 export interface LensScores5 {

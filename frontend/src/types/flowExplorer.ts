@@ -1,4 +1,4 @@
-/** Flow Explorer demo / visualization types */
+/** Flow Explorer visualization types (data from pipeline run graph snapshots) */
 
 export type FlowNodeType =
   | "source"
@@ -44,7 +44,8 @@ export interface FlowTxRow {
 }
 
 export interface FlowCluster {
-  key: "A" | "B" | "C";
+  /** Cluster / tab key (e.g. cluster id) */
+  key: string;
   name: string;
   typology: string;
   typologyShort: string;

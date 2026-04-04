@@ -21,7 +21,7 @@ function Card({
   borderAccent,
   delta,
   trendNote,
-  seed,
+  sparkValues,
 }: {
   label: string;
   value: number;
@@ -31,7 +31,7 @@ function Card({
   borderAccent: string;
   delta?: number;
   trendNote?: string;
-  seed: number;
+  sparkValues?: number[];
 }) {
   const subline =
     trendNote != null && trendNote.length > 0
@@ -56,7 +56,7 @@ function Card({
         </div>
         <Icon className="h-5 w-5 shrink-0 opacity-70" aria-hidden />
       </div>
-      <SparklineBars seed={seed} colorClass={sparkClass} />
+      <SparklineBars values={sparkValues} colorClass={sparkClass} />
     </div>
   );
 }
@@ -68,6 +68,7 @@ export default function RiskSummaryCards({
   heuristicsFired,
   deltas,
   trends,
+  sparkSeries,
 }: RiskSummaryCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -80,7 +81,7 @@ export default function RiskSummaryCards({
         sparkClass="bg-[#f87171]/80"
         delta={deltas?.criticalAlerts}
         trendNote={trends?.criticalAlerts}
-        seed={0.12}
+        sparkValues={sparkSeries?.criticalAlerts}
       />
       <Card
         label="Txns scored"
@@ -91,7 +92,7 @@ export default function RiskSummaryCards({
         sparkClass="bg-[#34d399]/75"
         delta={deltas?.txnsScored}
         trendNote={trends?.txnsScored}
-        seed={0.45}
+        sparkValues={sparkSeries?.txnsScored}
       />
       <Card
         label="Network cases"
@@ -102,7 +103,7 @@ export default function RiskSummaryCards({
         sparkClass="bg-[#a78bfa]/70"
         delta={deltas?.networkCases}
         trendNote={trends?.networkCases}
-        seed={0.67}
+        sparkValues={sparkSeries?.networkCases}
       />
       <Card
         label="Heuristics fired"
@@ -113,7 +114,7 @@ export default function RiskSummaryCards({
         sparkClass="bg-[#fbbf24]/70"
         delta={deltas?.heuristicsFired}
         trendNote={trends?.heuristicsFired}
-        seed={0.89}
+        sparkValues={sparkSeries?.heuristicsFired}
       />
     </div>
   );
