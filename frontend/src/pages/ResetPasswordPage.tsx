@@ -103,7 +103,7 @@ export default function ResetPasswordPage() {
             <span className="relative flex h-8 w-8 items-center justify-center rounded-md border border-[#34d399]/35 bg-[#060810]">
               <Hexagon className="h-5 w-5 text-[#34d399]" aria-hidden />
             </span>
-            AEGIS AML
+            CICADA AML
           </Link>
 
           <h1 className="font-display text-2xl font-semibold tracking-tight">Reset password</h1>

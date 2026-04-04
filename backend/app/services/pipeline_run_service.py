@@ -451,9 +451,24 @@ def _df_to_tx_records(df: pd.DataFrame) -> list[dict]:
     return records
 
 
+def _triggered_ids_for_storage(r: dict) -> list[int]:
+    """Normalize heuristic IDs for JSONB (native list, not a pre-serialized string)."""
+    raw = r.get("triggered_ids") or []
+    out: list[int] = []
+    for x in raw:
+        try:
+            out.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def _build_score_records(results: list[dict]) -> list[dict]:
     out = []
     for r in results:
+        trig = _triggered_ids_for_storage(r)
+        _hc = r.get("heuristic_triggered_count")
+        h_count = int(_hc) if _hc is not None else len(trig)
         out.append({
             "transaction_id": r.get("transaction_id", ""),
             "behavioral_score": r.get("behavioral_score"),
@@ -466,7 +481,8 @@ def _build_score_records(results: list[dict]) -> list[dict]:
             "risk_level": r.get("risk_level"),
             "predicted_label": r.get("predicted_label"),
             "explanation_summary": r.get("explanation_summary"),
-            "heuristic_triggered": json.dumps(r.get("triggered_ids", [])),
+            "heuristic_triggered": trig,
+            "heuristic_triggered_count": h_count,
             "heuristic_top_typo": r.get("heuristic_top_typology"),
             "heuristic_top_conf": r.get("heuristic_top_confidence"),
         })

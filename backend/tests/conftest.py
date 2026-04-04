@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for Aegis-AML backend tests."""
+"""Shared pytest fixtures for Cicada-AML backend tests."""
 import pytest
 import numpy as np
 import pandas as pd

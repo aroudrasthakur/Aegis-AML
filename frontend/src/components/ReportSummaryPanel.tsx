@@ -27,7 +27,7 @@ export default function ReportSummaryPanel({ runId }: ReportSummaryPanelProps) {
         if (!cancelled) setSummary(data);
       })
       .catch(() => {
-        /* no summary yet — that's fine */
+        if (!cancelled) setSummary(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -74,7 +74,7 @@ export default function ReportSummaryPanel({ runId }: ReportSummaryPanelProps) {
             AI Summary
           </h3>
         </div>
-        {summary && (
+        {summary?.summary_text && (
           <button
             type="button"
             disabled={generating}
@@ -106,14 +106,14 @@ export default function ReportSummaryPanel({ runId }: ReportSummaryPanelProps) {
         </div>
       )}
 
-      {generating && !summary && (
+      {generating && !summary?.summary_text && (
         <div className="mt-4 flex items-center gap-2 text-[var(--color-aegis-muted)]">
           <Loader2 className="h-4 w-4 animate-spin text-[#34d399]" />
           <span className="font-data text-xs">Generating AI summary…</span>
         </div>
       )}
 
-      {summary && (
+      {summary?.summary_text && (
         <div className="mt-4">
           <p className="whitespace-pre-wrap font-data text-xs leading-relaxed text-[#c8d4e0]">
             {summary.summary_text}

@@ -1,4 +1,4 @@
-# Aegis AML Risk Pipeline Audit
+# Cicada AML Risk Pipeline Audit
 
 **Date:** 2026-04-04  
 **Scope:** Read-only architecture review of the scoring pipeline, data model, API layer, and UI wiring.

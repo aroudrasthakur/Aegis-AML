@@ -54,12 +54,29 @@ class BaseHeuristic(ABC):
         ...
     
     def check_data_requirements(self, context: Optional[dict] = None) -> Applicability:
-        """Check if required data is available. Override for custom logic."""
+        """Check if required data is available. Override for custom logic.
+
+        ``timestamp`` (singular) is satisfied if ``timestamps`` is a non-empty list
+        (pipeline uses plural in wallet profiles) or ``timestamp`` is set.
+        """
         if not context:
             if self.data_requirements:
                 return Applicability.INAPPLICABLE_MISSING_DATA
             return Applicability.APPLICABLE
         for req in self.data_requirements:
-            if req not in context or context[req] is None:
-                return Applicability.INAPPLICABLE_MISSING_DATA
+            if self._requirement_satisfied(req, context):
+                continue
+            return Applicability.INAPPLICABLE_MISSING_DATA
         return Applicability.APPLICABLE
+
+    @staticmethod
+    def _requirement_satisfied(req: str, context: dict) -> bool:
+        if req == "timestamp":
+            v = context.get("timestamp")
+            if v not in (None, ""):
+                return True
+            ts = context.get("timestamps")
+            return isinstance(ts, list) and len(ts) > 0
+        if req not in context or context[req] is None:
+            return False
+        return True

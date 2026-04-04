@@ -5,6 +5,7 @@ import {
   formatCurrency,
   formatDate,
   formatRiskLevel,
+  formatScore4,
   truncateAddress,
 } from "@/utils/formatters";
 import { useThresholds } from "@/contexts/ThresholdProvider";
@@ -21,6 +22,10 @@ export interface TransactionTableProps {
   selectedId?: string | null;
   /** Queue layout: typology + lens dots + combined id/wallet column */
   variant?: "standard" | "queue";
+  /** Tighter rows/padding for dense views (e.g. paginated full-screen table). */
+  compact?: boolean;
+  /** No outer card border/radius (use inside a parent panel). */
+  embedded?: boolean;
 }
 
 type SortKey =
@@ -39,7 +44,12 @@ export default function TransactionTable({
   onSelect,
   selectedId = null,
   variant = "standard",
+  compact = false,
+  embedded = false,
 }: TransactionTableProps) {
+  const cellY = compact ? "py-2" : "py-3";
+  const cellX = compact ? "px-3" : "px-4";
+  const thClass = `font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)] ${cellX} ${cellY}`;
   const { config: tierConfig } = useThresholds();
   const [sortKey, setSortKey] = useState<SortKey>(
     variant === "queue" ? "risk_score" : "timestamp",
@@ -79,7 +89,7 @@ export default function TransactionTable({
   }) {
     const active = sortKey === columnKey;
     return (
-      <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">
+      <th className={thClass}>
         <button
           type="button"
           onClick={() => toggleSort(columnKey)}
@@ -98,9 +108,16 @@ export default function TransactionTable({
   }
 
   const colSpan = variant === "queue" ? 4 : 7;
+  const tdC = `${cellX} ${cellY}`;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] text-[#e6edf3]">
+    <div
+      className={
+        embedded
+          ? "overflow-hidden bg-transparent text-[#e6edf3]"
+          : "overflow-hidden rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] text-[#e6edf3]"
+      }
+    >
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
@@ -110,7 +127,7 @@ export default function TransactionTable({
                   <SortHeader label="Transaction" columnKey="transaction_id" />
                   <SortHeader label="Score" columnKey="risk_score" />
                   <SortHeader label="Typology" columnKey="typology_tag" />
-                  <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">
+                  <th className={thClass}>
                     Lens
                   </th>
                 </>
@@ -132,7 +149,7 @@ export default function TransactionTable({
               <tr>
                 <td
                   colSpan={colSpan}
-                  className="px-4 py-12 text-center text-[var(--color-aegis-muted)]"
+                  className={`${cellX} py-12 text-center text-[var(--color-aegis-muted)]`}
                 >
                   No transactions to display.
                 </td>
@@ -176,7 +193,7 @@ export default function TransactionTable({
                 if (variant === "queue") {
                   return (
                     <tr key={tx.id} {...rowProps}>
-                      <td className="px-4 py-3">
+                      <td className={tdC}>
                         <div className="font-mono text-[11px] text-[#e6edf3]">
                           {tx.display_ref ?? truncateAddress(tx.transaction_id, 10)}
                         </div>
@@ -185,7 +202,7 @@ export default function TransactionTable({
                           {tx.transaction_id.slice(-3)}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={tdC}>
                         <div className="flex flex-col gap-1.5 min-w-[100px]">
                           <span className="font-mono text-sm tabular-nums text-[#e6edf3]">
                             {risk == null ? "—" : risk.toFixed(2)}
@@ -200,12 +217,12 @@ export default function TransactionTable({
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={tdC}>
                         <span className="rounded-full border border-[var(--color-aegis-border)] bg-[#060810] px-2.5 py-0.5 text-[10px] text-[#a5b4c8]">
                           {(tx.typology_tag ?? "—").replace(/^T-\d+\s*/, "")}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={tdC}>
                         <LensDots scores={lens} />
                       </td>
                     </tr>
@@ -216,35 +233,35 @@ export default function TransactionTable({
                 const riskLabel =
                   risk == null
                     ? "—"
-                    : `${riskMeta.label} (${(risk * 100).toFixed(0)}%)`;
+                    : `${riskMeta.label} (${formatScore4(risk)})`;
 
                 return (
                   <tr key={tx.id} {...rowProps}>
-                    <td className="px-4 py-3 font-mono text-[11px] text-[#e6edf3]">
+                    <td className={`${tdC} font-mono text-[11px] text-[#e6edf3]`}>
                       {truncateAddress(tx.transaction_id, 8)}
                     </td>
-                    <td className="px-4 py-3 font-mono">
+                    <td className={`${tdC} font-mono`}>
                       {truncateAddress(tx.sender_wallet, 6)}
                     </td>
-                    <td className="px-4 py-3 font-mono">
+                    <td className={`${tdC} font-mono`}>
                       {truncateAddress(tx.receiver_wallet, 6)}
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-[#e6edf3]">
+                    <td className={`${tdC} tabular-nums text-[#e6edf3]`}>
                       {formatCurrency(tx.amount)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={tdC}>
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(risk, tierConfig)}`}
                       >
                         {riskLabel}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={tdC}>
                       <span className="inline-flex min-w-[2rem] justify-center rounded-md border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-0.5 text-[11px] font-medium tabular-nums">
                         {tx.heuristics_count ?? "—"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-aegis-muted)]">
+                    <td className={`${tdC} text-[var(--color-aegis-muted)]`}>
                       {formatDate(tx.timestamp)}
                     </td>
                   </tr>

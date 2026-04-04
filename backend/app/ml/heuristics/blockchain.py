@@ -6,7 +6,6 @@ from typing import Any, Optional
 from app.ml.heuristics.base import (
     BaseHeuristic,
     HeuristicResult,
-    Applicability,
     Environment,
 )
 from app.ml.heuristics.common_red_flags import (
@@ -38,6 +37,7 @@ def _safe_get(d: Optional[dict], *keys, default=None):
 
 
 def _stub(_hid: int, _name: str, _tags: list[str], _desc: str, _reqs: list[str] | None = None):
+    """Stub heuristics always run on-chain; ``_reqs`` is metadata only (off-chain / future data)."""
     _reqs = _reqs or []
 
     class _S(BaseHeuristic):
@@ -46,12 +46,10 @@ def _stub(_hid: int, _name: str, _tags: list[str], _desc: str, _reqs: list[str] 
         environment = ENV
         lens_tags = _tags
         description = _desc
-        data_requirements = _reqs
+        data_requirements = []
+        offchain_requirements = _reqs
 
         def evaluate(self, tx=None, wallet=None, graph=None, features=None, context=None):
-            appl = self.check_data_requirements(context)
-            if appl != Applicability.APPLICABLE:
-                return HeuristicResult(applicability=appl)
             return HeuristicResult()
 
     _S.__name__ = _S.__qualname__ = f"H{_hid}_{_name.replace(' ', '')}"
@@ -86,8 +84,7 @@ class PeelChain(BaseHeuristic):
                 amt = data.get("amount", data.get("value", 0))
                 ts = data.get("timestamp", data.get("block_number"))
                 edges.append((ts, amt))
-        try:
-            edges.sort(key=lambda x: (x[0] is None, x[0]))
+        edges.sort(key=lambda x: (x[0] is None, str(x[0])))
         if len(edges) < 3:
             return HeuristicResult()
         decreasing = sum(
@@ -377,20 +374,17 @@ class CoinJoinParticipation(BaseHeuristic):
     environment = ENV
     lens_tags = ["graph", "entity"]
     description = "Participation in CoinJoin transactions to mix funds."
-    data_requirements = ["coinjoin_data"]
+    data_requirements = []
 
     def evaluate(self, tx=None, wallet=None, graph=None, features=None, context=None):
-        appl = self.check_data_requirements(context)
-        if appl != Applicability.APPLICABLE:
-            if features and features.get("coinjoin_tx_count", 0) > 0:
-                count = features["coinjoin_tx_count"]
-                return HeuristicResult(
-                    triggered=count >= 2,
-                    confidence=min(count / 5.0, 1.0),
-                    explanation=f"Participated in {count} CoinJoin transactions.",
-                    evidence={"coinjoin_tx_count": count},
-                )
-            return HeuristicResult(applicability=appl)
+        if features and features.get("coinjoin_tx_count", 0) > 0:
+            count = int(features["coinjoin_tx_count"])
+            return HeuristicResult(
+                triggered=count >= 2,
+                confidence=min(count / 5.0, 1.0),
+                explanation=f"Participated in {count} CoinJoin transactions.",
+                evidence={"coinjoin_tx_count": count},
+            )
         return HeuristicResult()
 
 

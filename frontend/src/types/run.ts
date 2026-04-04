@@ -50,6 +50,26 @@ export interface RunSuspiciousTx {
   risk_level: string;
   typology: string | null;
   cluster_id: string | null;
+  /** Joined from ``run_transactions`` + ``run_scores`` (GET /runs/:id/suspicious). */
+  sender_wallet?: string;
+  receiver_wallet?: string;
+  amount?: number;
+  timestamp?: string;
+  tx_hash?: string | null;
+  asset_type?: string | null;
+  chain_id?: string | null;
+  fee?: number | null;
+  label?: string | null;
+  label_source?: string | null;
+  behavioral_score?: number | null;
+  behavioral_anomaly?: number | null;
+  graph_score?: number | null;
+  entity_score?: number | null;
+  temporal_score?: number | null;
+  offramp_score?: number | null;
+  heuristic_triggered_count?: number;
+  heuristic_top_typology?: string | null;
+  heuristic_top_confidence?: number | null;
 }
 
 export interface RunReportContent {

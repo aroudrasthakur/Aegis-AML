@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   Wallet,
-  Network,
   GitBranch,
   FileText,
   Bell,
@@ -30,10 +29,9 @@ const NAV_MAIN: {
   icon: LucideIcon;
   badge: string | null;
 }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, badge: "3" },
-  { to: "/dashboard/transactions", label: "Transactions", icon: ArrowLeftRight, badge: "1.2k" },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, badge: null },
+  { to: "/dashboard/transactions", label: "Transactions", icon: ArrowLeftRight, badge: null },
   { to: "/dashboard/wallets", label: "Wallets", icon: Wallet, badge: null },
-  { to: "/dashboard/networks", label: "Network cases", icon: Network, badge: "7" },
 ];
 
 const NAV_ANALYSIS: {
@@ -206,7 +204,7 @@ function DashboardShell() {
               <Hexagon className="h-5 w-5 text-[#34d399]" aria-hidden />
             </span>
             <div>
-              <div className="font-display text-sm font-bold tracking-tight text-[#e6edf3]">AEGIS AML</div>
+              <div className="font-display text-sm font-bold tracking-tight text-[#e6edf3]">CICADA AML</div>
               <p className="font-mono text-[10px] uppercase tracking-wider text-[#6b7c90]">Intelligence</p>
             </div>
           </div>

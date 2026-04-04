@@ -728,7 +728,7 @@ class TemporalGAT(nn.Module):
 
 ## Conclusion
 
-The Graph Lens is the **structural backbone** of the Aegis AML system. By analyzing the transaction network topology through Graph Attention Networks, it identifies suspicious positions, roles, and patterns that are invisible to transaction-level analysis.
+The Graph Lens is the **structural backbone** of the Cicada AML system. By analyzing the transaction network topology through Graph Attention Networks, it identifies suspicious positions, roles, and patterns that are invisible to transaction-level analysis.
 
 **Key Strengths:**
 
@@ -754,4 +754,4 @@ The Graph Lens is the **structural backbone** of the Aegis AML system. By analyz
 
 **Document Version:** 1.0  
 **Last Updated:** 2024-04-04  
-**Author:** Aegis AML Development Team
+**Author:** Cicada AML Development Team

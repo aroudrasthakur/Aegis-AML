@@ -113,7 +113,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
             <Shield className="h-6 w-6 text-[#34d399]/90" aria-hidden />
-            Aegis AML
+            Cicada AML
           </Link>
           <nav className="hidden flex-1 items-center justify-center gap-8 md:flex">
             <a href="#pipeline" className="font-data text-sm text-[#9aa7b8] hover:text-[#e6edf3]">
@@ -295,7 +295,7 @@ export default function LandingPage() {
           <ArrowRight className="h-4 w-4" />
         </Link>
         <p className="mt-6 font-data text-[11px] text-[var(--color-aegis-muted)]">
-          Aegis AML · dark-terminal intelligence
+          Cicada AML · dark-terminal intelligence
         </p>
       </footer>
     </div>

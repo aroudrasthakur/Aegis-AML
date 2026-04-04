@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The **Entity Lens** is a specialized machine learning component in the Aegis AML system designed to detect **common control** and identify cooperating wallet clusters. It addresses a critical challenge in blockchain AML: determining when multiple seemingly independent wallet addresses are actually controlled by the same entity or coordinated group.
+The **Entity Lens** is a specialized machine learning component in the Cicada AML system designed to detect **common control** and identify cooperating wallet clusters. It addresses a critical challenge in blockchain AML: determining when multiple seemingly independent wallet addresses are actually controlled by the same entity or coordinated group.
 
 **Key Capabilities:**
 
@@ -648,7 +648,7 @@ cluster_features = entity_lens.compute_cluster_features(
 
 ## Conclusion
 
-The Entity Lens is a critical component of the Aegis AML system, addressing the fundamental challenge of **common control detection** in blockchain transactions. By combining:
+The Entity Lens is a critical component of the Cicada AML system, addressing the fundamental challenge of **common control detection** in blockchain transactions. By combining:
 
 - ✅ State-of-the-art community detection algorithms
 - ✅ Rich cluster-level feature engineering
@@ -664,4 +664,4 @@ The Entity Lens is a critical component of the Aegis AML system, addressing the 
 
 **Document Version:** 1.0  
 **Last Updated:** 2024-04-04  
-**Author:** Aegis AML Development Team
+**Author:** Cicada AML Development Team

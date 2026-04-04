@@ -189,14 +189,19 @@ async def get_run_report(run_id: str, user_id: CurrentUserId):
 
 @router.get("/{run_id}/report/summary")
 async def get_report_summary(run_id: str, user_id: CurrentUserId):
-    """Return cached LLM summary for a run report."""
+    """Return cached LLM summary for a run report (200 with nulls if not generated yet)."""
     if not runs_repo.get_run(run_id, user_id):
         raise HTTPException(404, "Run not found")
     from app.services.summary_service import get_run_report_summary
     result = get_run_report_summary(run_id)
     if not result:
-        raise HTTPException(404, "No summary generated for this run yet")
-    return result
+        return {
+            "summary_text": None,
+            "summary_model": None,
+            "summary_generated_at": None,
+            "cached": False,
+        }
+    return {**result, "cached": True}
 
 
 @router.post("/{run_id}/report/summary")
@@ -219,7 +224,7 @@ async def generate_report_summary(run_id: str, user_id: CurrentUserId, force: bo
 async def get_suspicious(run_id: str, user_id: CurrentUserId):
     if not runs_repo.get_run(run_id, user_id):
         raise HTTPException(404, "Run not found")
-    return runs_repo.get_suspicious_txns(run_id)
+    return runs_repo.get_enriched_suspicious_txns(run_id)
 
 
 @router.get("/{run_id}/wallets")

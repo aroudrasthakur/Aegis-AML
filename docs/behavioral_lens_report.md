@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The **Behavioral Lens** is the first-line ML detector in the Aegis AML system, designed to identify **economically unnecessary activity** - transactions and patterns that serve no legitimate business purpose and exist solely to obfuscate the origin or destination of funds.
+The **Behavioral Lens** is the first-line ML detector in the Cicada AML system, designed to identify **economically unnecessary activity** - transactions and patterns that serve no legitimate business purpose and exist solely to obfuscate the origin or destination of funds.
 
 **Architecture:** Dual-model approach combining XGBoost classifier with an Autoencoder for anomaly detection
 
@@ -714,7 +714,7 @@ training data.
 
 ## Conclusion
 
-The Behavioral Lens serves as the **first line of defense** in the Aegis AML system, detecting economically unnecessary activity through a powerful combination of supervised and unsupervised learning. By analyzing transaction patterns, timing, amounts, and network behavior, it identifies both known laundering techniques and novel anomalies that have never been seen before.
+The Behavioral Lens serves as the **first line of defense** in the Cicada AML system, detecting economically unnecessary activity through a powerful combination of supervised and unsupervised learning. By analyzing transaction patterns, timing, amounts, and network behavior, it identifies both known laundering techniques and novel anomalies that have never been seen before.
 
 **Key Strengths:**
 
@@ -734,4 +734,4 @@ The Behavioral Lens serves as the **first line of defense** in the Aegis AML sys
 
 **Document Version:** 1.0  
 **Last Updated:** 2024-04-04  
-**Author:** Aegis AML Development Team
+**Author:** Cicada AML Development Team

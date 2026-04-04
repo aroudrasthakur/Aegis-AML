@@ -1,4 +1,4 @@
-# 🛡️ Aegis AML
+# 🛡️ Cicada AML
 
 **AI-Powered Blockchain Anti-Money Laundering Detection Platform**
 
@@ -13,7 +13,7 @@
 
 ## 🎯 Overview
 
-Aegis AML is a comprehensive anti-money laundering detection system designed for blockchain transactions. It employs a **heuristics-first, ML-second** architecture that combines explainable rule-based detection with advanced machine learning to identify both known and novel laundering patterns.
+Cicada AML is a comprehensive anti-money laundering detection system designed for blockchain transactions. It employs a **heuristics-first, ML-second** architecture that combines explainable rule-based detection with advanced machine learning to identify both known and novel laundering patterns.
 
 ### Key Features
 
@@ -30,7 +30,7 @@ Aegis AML is a comprehensive anti-money laundering detection system designed for
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     AEGIS AML PIPELINE                          │
+│                   CICADA AML PIPELINE                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  1. Data Ingestion → CSV Upload / Elliptic Dataset            │
@@ -89,8 +89,8 @@ This approach ensures:
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/aegis-aml.git
-cd aegis-aml
+git clone https://github.com/yourusername/cicada-aml.git
+cd cicada-aml
 ```
 
 2. **Backend Setup**
@@ -182,7 +182,7 @@ Upload your own transaction data via the dashboard or API:
 
 ## 🔬 The 185 Heuristics
 
-Aegis implements comprehensive typology coverage across four environments:
+Cicada implements comprehensive typology coverage across four environments:
 
 ### Traditional (IDs 1-90)
 
@@ -477,7 +477,7 @@ GET  /api/reports/{id}/download           # Download report
 ## 📁 Project Structure
 
 ```
-aegis-aml/
+cicada-aml/
 ├── backend/
 │   ├── app/
 │   │   ├── api/              # FastAPI routes
@@ -607,8 +607,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/aegis-aml/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/aegis-aml/discussions)
+- **Issues:** [GitHub Issues](https://github.com/yourusername/cicada-aml/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/yourusername/cicada-aml/discussions)
 - **Email:** your.email@example.com
 
 ---
@@ -629,6 +629,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for the fight against financial crime**
 
-[⭐ Star us on GitHub](https://github.com/yourusername/aegis-aml) | [📖 Read the Docs](https://aegis-aml.readthedocs.io) | [💬 Join Discord](https://discord.gg/aegis-aml)
+[⭐ Star us on GitHub](https://github.com/yourusername/cicada-aml) | [📖 Read the Docs](https://cicada-aml.readthedocs.io) | [💬 Join Discord](https://discord.gg/cicada-aml)
 
 </div>

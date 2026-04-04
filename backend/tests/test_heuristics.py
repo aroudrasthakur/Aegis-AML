@@ -59,6 +59,7 @@ class TestHeuristicRunner:
             "triggered_count",
             "top_typology",
             "top_confidence",
+            "top_k_triggers",
             "explanations",
         }
         assert expected_keys == set(result.keys())

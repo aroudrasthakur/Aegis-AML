@@ -1,4 +1,5 @@
 import type { LensSignalScores } from "@/types/transaction";
+import { formatScore4 } from "@/utils/formatters";
 
 const ORDER: { key: keyof LensSignalScores; title: string; color: string }[] = [
   { key: "behavioral", title: "Behavioral", color: "bg-[#00e5a0]" },
@@ -18,7 +19,7 @@ export function LensDots({ scores }: { scores: LensSignalScores }) {
           <span
             key={key}
             className={`h-2.5 w-2.5 rounded-full ${color} ${opacity}`}
-            title={`${title}: ${(v * 100).toFixed(0)}%`}
+            title={`${title}: ${formatScore4(v)}`}
           />
         );
       })}

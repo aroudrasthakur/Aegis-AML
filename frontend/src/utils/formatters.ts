@@ -5,6 +5,12 @@ export function formatNumber(value: number, decimals = 2): string {
   }).format(value);
 }
 
+/** Model / risk scores (typically 0–1) shown with 4 decimal places on the dashboard. */
+export function formatScore4(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value.toFixed(4);
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -13,7 +19,10 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-US", {
+  if (value == null || String(value).trim() === "") return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",

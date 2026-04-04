@@ -14,7 +14,7 @@ from app.api.routes_policies import router as policies_router
 from app.api.routes_runs import router as runs_router
 
 app = FastAPI(
-    title="Aegis AML",
+    title="Cicada AML",
     description="AI-Powered Blockchain Laundering Detection and Investigation Dashboard",
     version="0.1.0",
 )

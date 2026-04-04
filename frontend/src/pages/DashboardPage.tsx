@@ -23,6 +23,8 @@ import type {
   LensScores5,
   ModelPerformanceMetric,
 } from "@/types/dashboard";
+import { formatScore4 } from "@/utils/formatters";
+import { mapEnrichedSuspiciousToQueueRow } from "@/utils/suspiciousQueueRow";
 
 function greetingForNow(): string {
   const h = new Date().getHours();
@@ -111,34 +113,7 @@ export default function DashboardPage() {
 
         const rows: TransactionQueueRow[] = sus.map((t) => {
           const detail = topTxns.find((d: { transaction_id: string }) => d.transaction_id === t.transaction_id);
-          return {
-            id: t.id,
-            display_ref: `TX-${t.transaction_id.slice(0, 6)}`,
-            transaction_id: t.transaction_id,
-            tx_hash: null,
-            sender_wallet: "",
-            receiver_wallet: "",
-            amount: 0,
-            asset_type: null,
-            chain_id: null,
-            timestamp: "",
-            fee: null,
-            label: null,
-            label_source: null,
-            created_at: "",
-            risk_score: t.meta_score,
-            heuristics_count: 0,
-            typology_tag: t.typology ?? undefined,
-            lens_scores: detail
-              ? {
-                  behavioral: detail.behavioral_score,
-                  graph: detail.graph_score,
-                  entity: detail.entity_score,
-                  temporal: detail.temporal_score,
-                  offramp: detail.offramp_score,
-                }
-              : undefined,
-          };
+          return mapEnrichedSuspiciousToQueueRow(t, tierConfig, detail ?? null);
         });
         rows.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
         setQueue(rows);
@@ -149,7 +124,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedRunId]);
+  }, [selectedRunId, tierConfig]);
 
   const filteredQueue = useMemo(() => {
     if (queueFilter === "critical") {
@@ -251,19 +226,27 @@ export default function DashboardPage() {
         const relStrength = imp / maxImp;
         return {
           name: l.name,
-          prAuc: Math.min(0.95, prAuc * (0.7 + 0.3 * relStrength)),
-          recall50: Math.min(0.95, recall * (0.7 + 0.3 * relStrength)),
-          precision50: Math.min(0.95, precision * (0.7 + 0.3 * relStrength)),
-          f1: Math.min(0.95, f1 * (0.7 + 0.3 * relStrength)),
+          prAuc: Number(
+            Math.min(0.95, prAuc * (0.7 + 0.3 * relStrength)).toFixed(4),
+          ),
+          recall50: Number(
+            Math.min(0.95, recall * (0.7 + 0.3 * relStrength)).toFixed(4),
+          ),
+          precision50: Number(
+            Math.min(0.95, precision * (0.7 + 0.3 * relStrength)).toFixed(4),
+          ),
+          f1: Number(
+            Math.min(0.95, f1 * (0.7 + 0.3 * relStrength)).toFixed(4),
+          ),
           fpPer1k: Math.round(20 * (1 - relStrength * 0.5)),
         };
       }),
       {
         name: "Meta",
-        prAuc: Number(prAuc.toFixed(3)),
-        recall50: Number(recall.toFixed(3)),
-        precision50: Number(precision.toFixed(3)),
-        f1: Number(f1.toFixed(3)),
+        prAuc: Number(prAuc.toFixed(4)),
+        recall50: Number(recall.toFixed(4)),
+        precision50: Number(precision.toFixed(4)),
+        f1: Number(f1.toFixed(4)),
         fpPer1k: 5,
       },
     ];
@@ -302,7 +285,7 @@ export default function DashboardPage() {
           />
           <div className="flex flex-wrap items-end gap-6 font-mono text-[11px] uppercase tracking-wide text-[#7d8a99]">
             <p className="text-[#f87171]/95">{selectedRun?.suspicious_tx_count ?? stats?.total_suspicious ?? 0} alerts</p>
-            <p className="text-[#34d399]/95">{recall.toFixed(2)} recall</p>
+            <p className="text-[#34d399]/95">{formatScore4(recall)} recall</p>
             <p className="text-[#7dd3fc]/95">
               {(((selectedRun?.total_txns ?? stats?.total_txns_scored ?? 0)) / 1000).toFixed(1)}k scored
             </p>

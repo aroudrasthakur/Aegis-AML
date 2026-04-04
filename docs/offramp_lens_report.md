@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The **Off-ramp Lens** is a specialized ML detector in the Aegis AML system focused on identifying **conversion and exit patterns** - the critical final stage of money laundering where illicit cryptocurrency is converted to fiat currency or moved to exchanges for cashing out.
+The **Off-ramp Lens** is a specialized ML detector in the Cicada AML system focused on identifying **conversion and exit patterns** - the critical final stage of money laundering where illicit cryptocurrency is converted to fiat currency or moved to exchanges for cashing out.
 
 **Architecture:** XGBoost classifier trained on off-ramp indicators and network proximity features
 
@@ -815,7 +815,7 @@ The Off-ramp Lens provides one input feature to the Meta-Learner:
 
 ## Conclusion
 
-The Off-ramp Lens serves as a **critical interdiction point** in the Aegis AML system, focusing on the final stage of money laundering where criminals attempt to convert illicit cryptocurrency into usable fiat currency. By analyzing network proximity to exchanges, consolidation patterns, and suspicious neighbor influence, it identifies wallets preparing to cash out.
+The Off-ramp Lens serves as a **critical interdiction point** in the Cicada AML system, focusing on the final stage of money laundering where criminals attempt to convert illicit cryptocurrency into usable fiat currency. By analyzing network proximity to exchanges, consolidation patterns, and suspicious neighbor influence, it identifies wallets preparing to cash out.
 
 **Key Strengths:**
 
@@ -841,4 +841,4 @@ The Off-ramp Lens is most effective when combined with other lenses in the Meta-
 
 **Document Version:** 1.0  
 **Last Updated:** 2024-04-04  
-**Author:** Aegis AML Development Team
+**Author:** Cicada AML Development Team

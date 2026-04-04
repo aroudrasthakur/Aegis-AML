@@ -1,6 +1,7 @@
 """Repository for pipeline_runs and all run-scoped tables."""
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -119,6 +120,12 @@ def insert_run_transactions(run_id: str, records: list[dict]) -> int:
     return inserted
 
 
+def get_run_transactions(run_id: str) -> list[dict]:
+    sb = get_supabase()
+    resp = sb.table("run_transactions").select("*").eq("run_id", run_id).execute()
+    return list(resp.data or [])
+
+
 # ---------------------------------------------------------------------------
 # run_scores
 # ---------------------------------------------------------------------------
@@ -165,6 +172,80 @@ def get_suspicious_txns(run_id: str) -> list[dict]:
     sb = get_supabase()
     resp = sb.table("run_suspicious_txns").select("*").eq("run_id", run_id).execute()
     return list(resp.data or [])
+
+
+def _parse_triggered_ids(raw: Any) -> list[Any]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+        try:
+            return json.loads(s)
+        except Exception:
+            return []
+    return []
+
+
+def get_enriched_suspicious_txns(run_id: str) -> list[dict]:
+    """Merge ``run_suspicious_txns`` with ``run_transactions`` and ``run_scores`` by ``transaction_id``."""
+    suspicious = get_suspicious_txns(run_id)
+    tx_by_id: dict[str, dict] = {}
+    for r in get_run_transactions(run_id):
+        tid = str(r.get("transaction_id", ""))
+        if tid:
+            tx_by_id[tid] = r
+    score_by_id: dict[str, dict] = {}
+    for r in get_run_scores(run_id):
+        tid = str(r.get("transaction_id", ""))
+        if tid:
+            score_by_id[tid] = r
+
+    out: list[dict] = []
+    for s in suspicious:
+        tid = str(s.get("transaction_id", ""))
+        tx = tx_by_id.get(tid) or {}
+        sc = score_by_id.get(tid) or {}
+        trig = _parse_triggered_ids(sc.get("heuristic_triggered"))
+        h_count_raw = sc.get("heuristic_triggered_count")
+        heuristic_triggered_count = len(trig)
+        if heuristic_triggered_count == 0 and h_count_raw is not None:
+            try:
+                heuristic_triggered_count = int(h_count_raw)
+            except (TypeError, ValueError):
+                heuristic_triggered_count = 0
+        amt = tx.get("amount")
+        fee = tx.get("fee")
+        ts = tx.get("timestamp")
+        ts_str = ts if isinstance(ts, str) else (str(ts) if ts is not None else "")
+
+        row = {
+            **s,
+            "sender_wallet": str(tx.get("sender_wallet") or ""),
+            "receiver_wallet": str(tx.get("receiver_wallet") or ""),
+            "amount": float(amt) if amt is not None else 0.0,
+            "timestamp": ts_str,
+            "tx_hash": tx.get("tx_hash"),
+            "asset_type": tx.get("asset_type"),
+            "chain_id": tx.get("chain_id"),
+            "fee": float(fee) if fee is not None else None,
+            "label": tx.get("label"),
+            "label_source": tx.get("label_source"),
+            "behavioral_score": sc.get("behavioral_score"),
+            "behavioral_anomaly": sc.get("behavioral_anomaly"),
+            "graph_score": sc.get("graph_score"),
+            "entity_score": sc.get("entity_score"),
+            "temporal_score": sc.get("temporal_score"),
+            "offramp_score": sc.get("offramp_score"),
+            "heuristic_triggered_count": heuristic_triggered_count,
+            "heuristic_top_typology": sc.get("heuristic_top_typo"),
+            "heuristic_top_confidence": sc.get("heuristic_top_conf"),
+        }
+        out.append(row)
+    return out
 
 
 # ---------------------------------------------------------------------------

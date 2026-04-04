@@ -33,12 +33,10 @@ def _stub(_hid: int, _name: str, _tags: list[str], _desc: str, _reqs: list[str])
         environment = ENV
         lens_tags = _tags
         description = _desc
-        data_requirements = _reqs
+        data_requirements = []
+        offchain_requirements = _reqs
 
         def evaluate(self, tx=None, wallet=None, graph=None, features=None, context=None):
-            appl = self.check_data_requirements(context)
-            if appl != Applicability.APPLICABLE:
-                return HeuristicResult(applicability=appl)
             return HeuristicResult()
 
     _S.__name__ = _S.__qualname__ = f"H{_hid}_{_name.replace(' ', '')}"

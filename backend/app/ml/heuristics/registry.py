@@ -40,6 +40,7 @@ def get_registry_entries() -> list[dict]:
             "lens_tags": h.lens_tags,
             "description": h.description,
             "data_requirements": h.data_requirements,
+            "offchain_requirements": getattr(h, "offchain_requirements", []),
         })
     return entries
 

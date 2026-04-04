@@ -271,7 +271,7 @@ export default function AuthPage() {
             <span className="flex h-8 w-8 items-center justify-center rounded-md border border-[#34d399]/35 bg-[#0d1117]">
               <Hexagon className="h-5 w-5 text-[#34d399]" aria-hidden />
             </span>
-            AEGIS AML
+            CICADA AML
           </Link>
           <h1 className="font-display text-3xl font-bold tracking-tight">Secure Access</h1>
           <p className="mt-2 max-w-md font-data text-sm text-[#9aa7b8]">Sign in, create an account, verify OTP, or recover your password.</p>

@@ -1,1 +1,1 @@
-"""Training scripts for all Aegis-AML model lenses."""
+"""Training scripts for all Cicada-AML model lenses."""

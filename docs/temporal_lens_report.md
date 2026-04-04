@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The **Temporal Lens** is a specialized ML detector in the Aegis AML system that analyzes **transaction sequences over time** to identify temporal patterns indicative of money laundering. Unlike other lenses that analyze individual transactions or static features, the Temporal Lens captures the dynamic evolution of wallet behavior through LSTM-based sequence modeling.
+The **Temporal Lens** is a specialized ML detector in the Cicada AML system that analyzes **transaction sequences over time** to identify temporal patterns indicative of money laundering. Unlike other lenses that analyze individual transactions or static features, the Temporal Lens captures the dynamic evolution of wallet behavior through LSTM-based sequence modeling.
 
 **Architecture:** 2-layer LSTM neural network with attention to temporal dependencies
 
@@ -819,7 +819,7 @@ The Temporal Lens provides one input feature to the Meta-Learner:
 
 ## Conclusion
 
-The Temporal Lens fills a critical gap in the Aegis AML system by analyzing **how wallet behavior evolves over time**. While other lenses examine static features or network structure, the Temporal Lens captures the dynamic temporal signatures that characterize velocity laundering, bot-driven operations, and sequential laundering playbooks.
+The Temporal Lens fills a critical gap in the Cicada AML system by analyzing **how wallet behavior evolves over time**. While other lenses examine static features or network structure, the Temporal Lens captures the dynamic temporal signatures that characterize velocity laundering, bot-driven operations, and sequential laundering playbooks.
 
 **Key Strengths:**
 
@@ -845,4 +845,4 @@ The Temporal Lens is most powerful when combined with other lenses in the Meta-L
 
 **Document Version:** 1.0  
 **Last Updated:** 2024-04-04  
-**Author:** Aegis AML Development Team
+**Author:** Cicada AML Development Team

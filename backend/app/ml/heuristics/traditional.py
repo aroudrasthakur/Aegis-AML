@@ -27,8 +27,7 @@ ENV = Environment.TRADITIONAL
 # ---------------------------------------------------------------------------
 
 def _create_stub(_hid: int, _name: str, _tags: list[str], _desc: str, _reqs: list[str]):
-    """Return an *instance* of a stub heuristic whose evaluate() checks data
-    requirements and returns inapplicable when the data is missing."""
+    """Stub heuristics always run; ``_reqs`` documents ideal off-chain inputs (metadata only)."""
 
     class _Stub(BaseHeuristic):
         id = _hid
@@ -36,12 +35,10 @@ def _create_stub(_hid: int, _name: str, _tags: list[str], _desc: str, _reqs: lis
         environment = ENV
         lens_tags = _tags
         description = _desc
-        data_requirements = _reqs
+        data_requirements = []
+        offchain_requirements = _reqs
 
         def evaluate(self, tx=None, wallet=None, graph=None, features=None, context=None):
-            appl = self.check_data_requirements(context)
-            if appl != Applicability.APPLICABLE:
-                return HeuristicResult(applicability=appl)
             return HeuristicResult()
 
     _Stub.__name__ = _Stub.__qualname__ = f"H{_hid}_{_name.replace(' ', '')}"

@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 
 class InferencePipeline:
-    """Orchestrates the full Aegis-AML scoring pipeline.
+    """Orchestrates the full Cicada-AML scoring pipeline.
 
     Ordering contract:
         1. Feature extraction (batched)
@@ -155,15 +155,31 @@ class InferencePipeline:
         tx: dict[str, Any],
         wallet_profile: dict[str, Any],
         global_context: dict[str, Any],
+        graph: nx.DiGraph | None = None,
     ) -> dict[str, Any]:
-        """Merge global context with per-wallet data for heuristic evaluation."""
+        """Merge global context with per-wallet data for heuristic evaluation.
+
+        Adds ``timestamp`` (current tx) and ``deposit_patterns`` (inbound counterparties)
+        so traditional heuristics match ``data_requirements`` keys from ``score_transactions``.
+        """
         ctx = dict(global_context)
         ctx["amount"] = wallet_profile.get("amounts", [])
         ctx["balances"] = wallet_profile.get("balances", [])
         ctx["timestamps"] = wallet_profile.get("timestamps", [])
+        ts_one = tx.get("timestamp") if tx else None
+        if (ts_one is None or ts_one == "") and ctx["timestamps"]:
+            ts_one = ctx["timestamps"][-1]
+        ctx["timestamp"] = ts_one
         ctx["total_in"] = wallet_profile.get("total_in", 0)
         ctx["total_out"] = wallet_profile.get("total_out", 0)
         ctx["tx_count"] = wallet_profile.get("tx_count", 0)
+
+        addr = str(wallet_profile.get("address") or "")
+        if graph is not None and addr and graph.has_node(addr):
+            ctx["deposit_patterns"] = [str(p) for p in graph.predecessors(addr)]
+        else:
+            ctx["deposit_patterns"] = []
+
         return ctx
 
     # ------------------------------------------------------------------
@@ -259,7 +275,7 @@ class InferencePipeline:
             wallet_id = str(tx.get("sender_wallet") or tx.get("sender", ""))
             wallet_ids.append(wallet_id)
             wallet_prof = wallet_profiles.get(wallet_id, {"address": wallet_id})
-            tx_ctx = self._build_tx_context(tx, wallet_prof, context)
+            tx_ctx = self._build_tx_context(tx, wallet_prof, context, graph)
 
             h_result = run_heuristics(
                 tx=tx, wallet=wallet_prof, graph=graph,

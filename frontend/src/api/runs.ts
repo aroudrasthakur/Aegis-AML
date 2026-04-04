@@ -76,7 +76,7 @@ export async function fetchRunWallets(
 }
 
 export interface ReportSummary {
-  summary_text: string;
+  summary_text: string | null;
   summary_model: string | null;
   summary_generated_at: string | null;
   cached?: boolean;
