@@ -78,3 +78,56 @@ export async function fetchClusterMembers(
   );
   return data;
 }
+
+export interface DashboardStats {
+  total_runs: number;
+  completed_runs: number;
+  total_txns_scored: number;
+  total_suspicious: number;
+  total_clusters: number;
+  latest_run: PipelineRun | null;
+  latest_suspicious: number;
+  latest_clusters: number;
+  latest_txns: number;
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const { data } = await client.get("/runs/dashboard/stats");
+  return data;
+}
+
+export interface ModelMetricsResponse {
+  metrics: {
+    pr_auc: number;
+    roc_auc: number;
+    threshold: number;
+    n_train: number;
+    n_cal: number;
+    n_test: number;
+    n_features: number;
+    feature_importance: Record<string, number>;
+  } | null;
+}
+
+export async function fetchModelMetrics(): Promise<ModelMetricsResponse> {
+  const { data } = await client.get("/runs/model/metrics");
+  return data;
+}
+
+export interface ThresholdResponse {
+  threshold: {
+    decision_threshold: number;
+    high_risk_threshold: number;
+    low_risk_ceiling: number;
+    optimal_threshold: number;
+    optimal_f1: number;
+    precision_at_threshold: number;
+    recall_at_threshold: number;
+    min_recall_target: number;
+  } | null;
+}
+
+export async function fetchModelThreshold(): Promise<ThresholdResponse> {
+  const { data } = await client.get("/runs/model/threshold");
+  return data;
+}

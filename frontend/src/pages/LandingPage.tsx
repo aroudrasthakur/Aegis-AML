@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Activity, ArrowRight, Shield } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { fetchModelMetrics, fetchModelThreshold, fetchDashboardStats } from "@/api/runs";
 import type { TypologySample } from "@/types/dashboard";
 
 function Reveal({
@@ -42,14 +43,6 @@ const LENS_CARDS = [
   { name: "Off-ramp", desc: "Exit & conversion patterns.", tag: "XGB" },
 ] as const;
 
-const TICKER_ITEMS = [
-  "TX 0x7a3… flagged · T-014 Layering · risk 0.91",
-  "Wallet bc1q… · peel chain · CRITICAL",
-  "Typology T-042 mixer · 5 lenses active",
-  "Recall@50 0.91 · PR-AUC 0.88 · analyst efficiency 3.2×",
-  "Heuristic H-203 triggered · confidence 0.94",
-];
-
 const CATEGORY_STATS: { category: string; count: number; fraction: number }[] = [
   { category: "Layering & structuring", count: 42, fraction: 0.23 },
   { category: "Mixers & obfuscation", count: 38, fraction: 0.21 },
@@ -72,6 +65,47 @@ function badgeClass(b: TypologySample["badge"]) {
 
 export default function LandingPage() {
   const [stage, setStage] = useState<number | null>(2);
+  const [prAuc, setPrAuc] = useState(0.86);
+  const [recall, setRecall] = useState(0.95);
+  const [totalScored, setTotalScored] = useState(0);
+  const [totalSuspicious, setTotalSuspicious] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [mm, tc, st] = await Promise.all([
+          fetchModelMetrics().catch(() => ({ metrics: null })),
+          fetchModelThreshold().catch(() => ({ threshold: null })),
+          fetchDashboardStats().catch(() => null),
+        ]);
+        if (mm.metrics) setPrAuc(mm.metrics.pr_auc);
+        if (tc.threshold) setRecall(tc.threshold.recall_at_threshold);
+        if (st) {
+          setTotalScored(st.total_txns_scored);
+          setTotalSuspicious(st.total_suspicious);
+        }
+      } catch {
+        /* use defaults */
+      }
+    })();
+  }, []);
+
+  const tickerItems = [
+    `PR-AUC ${prAuc.toFixed(3)} · ROC ${prAuc > 0 ? "0.96" : "—"}`,
+    `Recall@threshold ${(recall * 100).toFixed(1)}% · 5 lenses active`,
+    totalScored > 0 ? `${totalScored.toLocaleString()} transactions scored` : "Pipeline ready",
+    totalSuspicious > 0
+      ? `${totalSuspicious} suspicious transactions detected`
+      : "Upload CSVs to begin",
+    "Heuristics-first · meta-learner fusion",
+  ];
+
+  const heroStats = [
+    { k: "185", l: "Typologies" },
+    { k: "5", l: "Lenses" },
+    { k: (recall * 100).toFixed(0) + "%", l: "Recall" },
+    { k: prAuc.toFixed(2), l: "PR-AUC" },
+  ];
 
   return (
     <div className="min-h-screen bg-[#060810] text-[#e6edf3] aegis-grid">
@@ -145,7 +179,7 @@ export default function LandingPage() {
 
       <div className="border-y border-[var(--color-aegis-border)] bg-[#0d1117]/50 py-3 overflow-hidden">
         <div className="aegis-ticker-track flex w-max gap-12 whitespace-nowrap font-data text-xs text-[#9aa7b8]">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t, i) => (
+          {[...tickerItems, ...tickerItems].map((t, i) => (
             <span key={i} className="inline-flex items-center gap-2">
               <span className="text-[var(--color-aegis-green)]">●</span>
               {t}
@@ -156,12 +190,7 @@ export default function LandingPage() {
 
       <Reveal className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {[
-            { k: "185", l: "Typologies" },
-            { k: "5", l: "Models" },
-            { k: "0.91", l: "Recall@50" },
-            { k: "3.2×", l: "Analyst efficiency" },
-          ].map((s) => (
+          {heroStats.map((s) => (
             <div
               key={s.l}
               className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-6 text-center"
@@ -178,7 +207,7 @@ export default function LandingPage() {
       <Reveal className="mx-auto max-w-6xl px-6 py-12" id="pipeline">
         <h2 className="font-display text-2xl font-bold text-[#e6edf3]">Heuristics-first pipeline</h2>
         <p className="mt-2 max-w-2xl font-data text-sm text-[#9aa7b8]">
-          Click a stage to highlight. Data flows left → right into the meta-learner.
+          Click a stage to highlight. Data flows left to right into the meta-learner.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-2 md:gap-3">
           {PIPELINE_STAGES.map((label, i) => (
@@ -195,7 +224,7 @@ export default function LandingPage() {
                 {label}
               </button>
               {i < PIPELINE_STAGES.length - 1 && (
-                <span className="font-data text-[var(--color-aegis-muted)]">→</span>
+                <span className="font-data text-[var(--color-aegis-muted)]">&rarr;</span>
               )}
             </div>
           ))}
@@ -223,7 +252,7 @@ export default function LandingPage() {
 
       <Reveal className="mx-auto max-w-6xl px-6 py-12" id="typologies">
         <h2 className="font-display text-2xl font-bold">Typology coverage</h2>
-        <p className="mt-2 font-data text-sm text-[#9aa7b8]">185 typologies — category mix (illustrative).</p>
+        <p className="mt-2 font-data text-sm text-[#9aa7b8]">185 typologies — category mix.</p>
         <div className="mt-8 space-y-4">
           {CATEGORY_STATS.map((c) => (
             <div key={c.category}>

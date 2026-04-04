@@ -3,6 +3,8 @@ import numpy as np
 import joblib
 from pathlib import Path
 import networkx as nx
+
+from app.ml.entity_pickle_compat import ensure_entity_epoch_logger_on_main
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -89,5 +91,6 @@ class EntityLens:
     def load(self, model_path: str):
         p = Path(model_path)
         if p.exists():
+            ensure_entity_epoch_logger_on_main()
             self.classifier = joblib.load(p)
             logger.info(f"Loaded entity classifier from {p}")

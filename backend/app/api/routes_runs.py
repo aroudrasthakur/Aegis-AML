@@ -1,8 +1,10 @@
-"""Pipeline-run endpoints: upload, start, status, results."""
+"""Pipeline-run endpoints: upload, start, status, results, dashboard stats."""
 from __future__ import annotations
 
 import asyncio
+import json
 from io import BytesIO
+from pathlib import Path
 from typing import Annotated
 
 import pandas as pd
@@ -20,7 +22,69 @@ REQUIRED_HEADERS = {"transaction_id", "sender_wallet", "receiver_wallet", "amoun
 MAX_FILES = 3
 
 _active_tasks: dict[str, asyncio.Task] = {}
+_pending_frames: dict[str, list[pd.DataFrame]] = {}
 
+
+# ---------------------------------------------------------------------------
+# Static paths MUST be declared before /{run_id} to avoid route conflicts
+# ---------------------------------------------------------------------------
+
+@router.get("/dashboard/stats")
+async def dashboard_stats():
+    """Aggregate stats across all runs for dashboard headline cards."""
+    all_runs, total_runs = runs_repo.list_runs(page=1, limit=200)
+    completed = [r for r in all_runs if r.get("status") == "completed"]
+    latest = completed[0] if completed else None
+
+    total_txns_scored = sum(r.get("total_txns", 0) for r in completed)
+    total_suspicious = sum(r.get("suspicious_tx_count", 0) for r in completed)
+    total_clusters = sum(r.get("suspicious_cluster_count", 0) for r in completed)
+    total_runs_completed = len(completed)
+
+    latest_suspicious = latest.get("suspicious_tx_count", 0) if latest else 0
+    latest_clusters = latest.get("suspicious_cluster_count", 0) if latest else 0
+    latest_txns = latest.get("total_txns", 0) if latest else 0
+
+    return {
+        "total_runs": total_runs,
+        "completed_runs": total_runs_completed,
+        "total_txns_scored": total_txns_scored,
+        "total_suspicious": total_suspicious,
+        "total_clusters": total_clusters,
+        "latest_run": latest,
+        "latest_suspicious": latest_suspicious,
+        "latest_clusters": latest_clusters,
+        "latest_txns": latest_txns,
+    }
+
+
+@router.get("/model/metrics")
+async def model_metrics():
+    """Return trained model metrics from the artifacts directory."""
+    for p in [Path("models/artifacts/metrics_report.json"), Path("../models/artifacts/metrics_report.json")]:
+        if p.exists():
+            try:
+                return {"metrics": json.loads(p.read_text())}
+            except Exception:
+                pass
+    return {"metrics": None}
+
+
+@router.get("/model/threshold")
+async def model_threshold():
+    """Return threshold config from training artifacts."""
+    for p in [Path("models/artifacts/threshold_config.json"), Path("../models/artifacts/threshold_config.json")]:
+        if p.exists():
+            try:
+                return {"threshold": json.loads(p.read_text())}
+            except Exception:
+                pass
+    return {"threshold": None}
+
+
+# ---------------------------------------------------------------------------
+# CRUD
+# ---------------------------------------------------------------------------
 
 @router.post("")
 async def create_run(
@@ -58,14 +122,9 @@ async def create_run(
 
     run = runs_repo.create_run(label=label, total_files=len(parsed_frames))
     run_id = run["id"]
-
-    # Hold frames in memory; caller must POST /start to kick off execution.
     _pending_frames[run_id] = parsed_frames
 
     return {"run_id": run_id, "status": "pending", "total_files": len(parsed_frames)}
-
-
-_pending_frames: dict[str, list[pd.DataFrame]] = {}
 
 
 @router.post("/{run_id}/start")

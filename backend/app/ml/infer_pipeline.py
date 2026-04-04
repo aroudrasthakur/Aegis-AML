@@ -13,6 +13,7 @@ import pandas as pd
 
 from app.config import settings
 from app.ml.heuristics.runner import run_all as run_heuristics
+from app.ml.platt_calibrator import ensure_platt_sigmoid_calibrator_on_main
 from app.ml.lenses.behavioral_model import BehavioralLens
 from app.ml.lenses.entity_model import EntityLens
 from app.ml.lenses.graph_model import GraphLens
@@ -60,6 +61,7 @@ class InferencePipeline:
 
         meta_path = Path(settings.meta_model_path)
         if meta_path.exists():
+            ensure_platt_sigmoid_calibrator_on_main()
             self.meta_model = joblib.load(meta_path)
             logger.info("Loaded meta-learner from %s", meta_path)
         meta_names_path = meta_path.parent / "feature_names.pkl"

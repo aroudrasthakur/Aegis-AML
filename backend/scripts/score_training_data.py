@@ -29,24 +29,10 @@ import numpy as np
 import pandas as pd
 import torch
 
+from app.ml.entity_pickle_compat import ensure_entity_epoch_logger_on_main
 from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import resolve_torch_device
 from app.utils.logger import get_logger
-
-# The entity classifier pickle references __main__._EntityEpochLogger (from when
-# train_entity ran as __main__).  We make that class available so joblib.load works.
-try:
-    from xgboost.callback import TrainingCallback as _TC
-
-    class _EntityEpochLogger(_TC):  # noqa: N801 – match the pickled name
-        def after_iteration(self, model, epoch, evals_log):
-            return False
-
-    import __main__ as _main_mod
-    if not hasattr(_main_mod, "_EntityEpochLogger"):
-        _main_mod._EntityEpochLogger = _EntityEpochLogger  # type: ignore[attr-defined]
-except Exception:
-    pass
 
 logger = get_logger(__name__)
 
@@ -189,6 +175,7 @@ def _score_entity(df: pd.DataFrame) -> np.ndarray:
         logger.warning("Entity artifacts incomplete; returning zeros")
         return np.zeros(len(df), dtype=np.float64)
 
+    ensure_entity_epoch_logger_on_main()
     classifier = joblib.load(cls_path)
     feature_names = joblib.load(feat_path) if feat_path.exists() else None
 

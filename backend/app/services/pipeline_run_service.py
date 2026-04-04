@@ -5,6 +5,7 @@ import asyncio
 import json
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import networkx as nx
@@ -20,7 +21,32 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-SUSPICIOUS_THRESHOLD = 0.5
+
+def _load_suspicious_threshold() -> float:
+    """Read the decision threshold from the trained model artifacts.
+
+    Tries the canonical artifact path first, then the loaded pipeline config,
+    then falls back to 0.5.
+    """
+    from app.ml.model_paths import MODELS_DIR
+
+    cfg_path = MODELS_DIR / "artifacts" / "threshold_config.json"
+    if cfg_path.exists():
+        try:
+            cfg = json.loads(cfg_path.read_text())
+            t = cfg.get("decision_threshold")
+            if t is not None:
+                logger.info("Using trained decision_threshold=%.6f from %s", t, cfg_path)
+                return float(t)
+        except Exception:
+            pass
+
+    pipeline = get_pipeline()
+    t = pipeline.threshold_config.get("decision_threshold")
+    if t is not None:
+        return float(t)
+
+    return 0.5
 
 
 def _update(run_id: str, pct: int, **kw: Any) -> None:
@@ -79,7 +105,16 @@ async def execute_pipeline_run(run_id: str, frames: list[pd.DataFrame]) -> None:
         _update(run_id, 75)
 
         # ---- 6. Identify suspicious transactions -----------------------------
-        suspicious = [r for r in results if (r.get("meta_score") or 0) >= SUSPICIOUS_THRESHOLD]
+        threshold = _load_suspicious_threshold()
+        suspicious = [
+            r for r in results
+            if (r.get("meta_score") or 0) >= threshold
+            or r.get("risk_level") in ("medium", "high")
+        ]
+        logger.info(
+            "Run %s: %d/%d transactions flagged suspicious (threshold=%.6f)",
+            run_id, len(suspicious), len(results), threshold,
+        )
         _update(run_id, 80)
 
         # ---- 7. Detect clusters among suspicious wallets ---------------------

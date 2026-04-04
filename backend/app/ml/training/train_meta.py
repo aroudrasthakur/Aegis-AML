@@ -9,7 +9,6 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     classification_report,
@@ -21,31 +20,10 @@ from xgboost import XGBClassifier
 
 from app.ml.model_paths import MODELS_DIR
 from app.ml.ml_device import fit_xgboost_classifier, log_device_banner, xgboost_fit_kwargs
+from app.ml.platt_calibrator import PlattSigmoidCalibrator
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-class PlattSigmoidCalibrator:
-    """Sigmoid (Platt) calibration on a fitted classifier's positive-class probabilities.
-
-    Newer scikit-learn rejects ``CalibratedClassifierCV(..., cv='prefit')``; this matches
-    that behavior for XGBoost base models.
-    """
-
-    def __init__(self, base_estimator: XGBClassifier):
-        self.base_estimator = base_estimator
-        self._calibrator = LogisticRegression(solver="lbfgs", max_iter=2000, random_state=42)
-
-    def fit(self, X, y) -> "PlattSigmoidCalibrator":
-        p = self.base_estimator.predict_proba(X)[:, 1].reshape(-1, 1)
-        self._calibrator.fit(p, np.asarray(y).astype(int))
-        return self
-
-    def predict_proba(self, X) -> np.ndarray:
-        p = self.base_estimator.predict_proba(X)[:, 1].reshape(-1, 1)
-        return self._calibrator.predict_proba(p)
-
 
 OUTPUT_DIR = MODELS_DIR / "meta"
 ARTIFACTS_DIR = MODELS_DIR / "artifacts"
