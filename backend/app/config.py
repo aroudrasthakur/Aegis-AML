@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_service_role_key: str = ""
+    # JWT secret from Supabase Dashboard → Project Settings → API → JWT Secret (validate user access tokens)
+    supabase_jwt_secret: str = ""
+    supabase_jwt_audience: str = "authenticated"
 
     model_dir: str = str(MODELS_DIR)
     behavioral_model_path: str = str(MODELS_DIR / "behavioral" / "xgboost_behavioral.pkl")

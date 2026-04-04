@@ -14,9 +14,14 @@ logger = get_logger(__name__)
 # pipeline_runs
 # ---------------------------------------------------------------------------
 
-def create_run(label: str | None, total_files: int) -> dict:
+def create_run(label: str | None, total_files: int, user_id: str) -> dict:
     sb = get_supabase()
-    row = {"label": label, "total_files": total_files, "status": "pending"}
+    row = {
+        "label": label,
+        "total_files": total_files,
+        "status": "pending",
+        "user_id": user_id,
+    }
     resp = sb.table("pipeline_runs").insert(row).execute()
     return (resp.data or [{}])[0]
 
@@ -48,23 +53,37 @@ def update_run_status(
     return update_run(run_id, **fields)
 
 
-def get_run(run_id: str) -> dict | None:
+def get_run(run_id: str, user_id: str | None = None) -> dict | None:
     sb = get_supabase()
-    resp = sb.table("pipeline_runs").select("*").eq("id", run_id).maybe_single().execute()
+    q = sb.table("pipeline_runs").select("*").eq("id", run_id)
+    if user_id is not None:
+        q = q.eq("user_id", user_id)
+    resp = q.maybe_single().execute()
     return resp.data if resp else None
 
 
-def list_runs(page: int = 1, limit: int = 50) -> tuple[list[dict], int]:
+def list_runs(
+    page: int = 1,
+    limit: int = 50,
+    user_id: str | None = None,
+) -> tuple[list[dict], int]:
     sb = get_supabase()
     offset = (page - 1) * limit
-    resp = (
+    q = (
         sb.table("pipeline_runs")
         .select("*", count="exact")
         .order("created_at", desc=True)
-        .range(offset, offset + limit - 1)
-        .execute()
     )
+    if user_id is not None:
+        q = q.eq("user_id", user_id)
+    resp = q.range(offset, offset + limit - 1).execute()
     return list(resp.data or []), resp.count or 0
+
+
+def get_cluster(cluster_id: str) -> dict | None:
+    sb = get_supabase()
+    resp = sb.table("run_clusters").select("*").eq("id", cluster_id).maybe_single().execute()
+    return resp.data if resp else None
 
 
 # ---------------------------------------------------------------------------
