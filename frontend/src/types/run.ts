@@ -2,6 +2,8 @@ export type RunStatus = "pending" | "running" | "completed" | "failed";
 
 export interface PipelineRun {
   id: string;
+  /** Owner (Supabase auth user / profiles.id) */
+  user_id?: string | null;
   label: string | null;
   status: RunStatus;
   created_at: string;

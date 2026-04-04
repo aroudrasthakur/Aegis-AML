@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Annotated
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from app.deps import get_current_user_id
 from app.repositories import runs_repo
 from app.services.pipeline_run_service import execute_pipeline_run
 from app.utils.logger import get_logger
@@ -17,6 +18,8 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+CurrentUserId = Annotated[str, Depends(get_current_user_id)]
 
 REQUIRED_HEADERS = {"transaction_id", "sender_wallet", "receiver_wallet", "amount", "timestamp"}
 MAX_FILES = 3
@@ -30,9 +33,9 @@ _pending_frames: dict[str, list[pd.DataFrame]] = {}
 # ---------------------------------------------------------------------------
 
 @router.get("/dashboard/stats")
-async def dashboard_stats():
-    """Aggregate stats across all runs for dashboard headline cards."""
-    all_runs, total_runs = runs_repo.list_runs(page=1, limit=200)
+async def dashboard_stats(user_id: CurrentUserId):
+    """Aggregate stats across the current user's runs for dashboard headline cards."""
+    all_runs, total_runs = runs_repo.list_runs(page=1, limit=200, user_id=user_id)
     completed = [r for r in all_runs if r.get("status") == "completed"]
     latest = completed[0] if completed else None
 
@@ -88,6 +91,7 @@ async def model_threshold():
 
 @router.post("")
 async def create_run(
+    user_id: CurrentUserId,
     files: Annotated[list[UploadFile], File(description="Up to 3 CSV files")],
     label: Annotated[str | None, Form()] = None,
 ):
@@ -120,7 +124,7 @@ async def create_run(
     if errors:
         raise HTTPException(400, detail={"message": "Validation failed", "file_errors": errors})
 
-    run = runs_repo.create_run(label=label, total_files=len(parsed_frames))
+    run = runs_repo.create_run(label=label, total_files=len(parsed_frames), user_id=user_id)
     run_id = run["id"]
     _pending_frames[run_id] = parsed_frames
 
@@ -128,9 +132,9 @@ async def create_run(
 
 
 @router.post("/{run_id}/start")
-async def start_run(run_id: str):
+async def start_run(run_id: str, user_id: CurrentUserId):
     """Launch background execution for a pending run."""
-    run = runs_repo.get_run(run_id)
+    run = runs_repo.get_run(run_id, user_id)
     if not run:
         raise HTTPException(404, "Run not found")
     if run["status"] != "pending":
@@ -152,21 +156,23 @@ async def start_run(run_id: str):
 
 
 @router.get("")
-async def list_runs(page: int = 1, limit: int = 50):
-    data, total = runs_repo.list_runs(page, limit)
+async def list_runs(user_id: CurrentUserId, page: int = 1, limit: int = 50):
+    data, total = runs_repo.list_runs(page, limit, user_id=user_id)
     return {"runs": data, "total": total, "page": page, "limit": limit}
 
 
 @router.get("/{run_id}")
-async def get_run(run_id: str):
-    run = runs_repo.get_run(run_id)
+async def get_run(run_id: str, user_id: CurrentUserId):
+    run = runs_repo.get_run(run_id, user_id)
     if not run:
         raise HTTPException(404, "Run not found")
     return run
 
 
 @router.get("/{run_id}/report")
-async def get_run_report(run_id: str):
+async def get_run_report(run_id: str, user_id: CurrentUserId):
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
     report = runs_repo.get_run_report(run_id)
     if not report:
         raise HTTPException(404, "Report not found for this run")
@@ -174,17 +180,26 @@ async def get_run_report(run_id: str):
 
 
 @router.get("/{run_id}/suspicious")
-async def get_suspicious(run_id: str):
+async def get_suspicious(run_id: str, user_id: CurrentUserId):
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
     return runs_repo.get_suspicious_txns(run_id)
 
 
 @router.get("/{run_id}/clusters")
-async def get_clusters(run_id: str):
+async def get_clusters(run_id: str, user_id: CurrentUserId):
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
     return runs_repo.get_run_clusters(run_id)
 
 
 @router.get("/{run_id}/clusters/{cluster_id}/graph")
-async def get_cluster_graph(run_id: str, cluster_id: str):
+async def get_cluster_graph(run_id: str, cluster_id: str, user_id: CurrentUserId):
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
+    c = runs_repo.get_cluster(cluster_id)
+    if not c or str(c.get("run_id")) != str(run_id):
+        raise HTTPException(404, "Cluster not found")
     snap = runs_repo.get_graph_snapshot(run_id, cluster_id)
     if not snap:
         raise HTTPException(404, "Graph snapshot not found")
@@ -192,5 +207,10 @@ async def get_cluster_graph(run_id: str, cluster_id: str):
 
 
 @router.get("/{run_id}/clusters/{cluster_id}/members")
-async def get_cluster_members(run_id: str, cluster_id: str):
+async def get_cluster_members(run_id: str, cluster_id: str, user_id: CurrentUserId):
+    if not runs_repo.get_run(run_id, user_id):
+        raise HTTPException(404, "Run not found")
+    c = runs_repo.get_cluster(cluster_id)
+    if not c or str(c.get("run_id")) != str(run_id):
+        raise HTTPException(404, "Cluster not found")
     return runs_repo.get_cluster_members(cluster_id)

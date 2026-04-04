@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { supabase } from "@/api/supabase";
 
 const client = axios.create({
   baseURL: "/api",
@@ -6,6 +7,18 @@ const client = axios.create({
 });
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+/** Adds Authorization header if available from supabase session */
+client.interceptors.request.use(async (config) => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 /** One retry on transient failures (common when Vite proxy hits ECONNRESET during uvicorn --reload). */
 client.interceptors.response.use(
