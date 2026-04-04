@@ -49,7 +49,6 @@ def score_and_persist(transactions: list[dict], graph=None) -> list[dict]:
             "graph_score": r.get("graph_score"),
             "entity_score": r.get("entity_score"),
             "temporal_score": r.get("temporal_score"),
-            "document_score": r.get("document_score"),
             "offramp_score": r.get("offramp_score"),
             "meta_score": r.get("meta_score"),
             "predicted_label": r.get("predicted_label"),

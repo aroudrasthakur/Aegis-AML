@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the full ML training pipeline: prepare features → five lenses in parallel → entity → meta.
+"""Run the full ML training pipeline: prepare features → four lenses in parallel → entity → meta.
 
 Artifacts are written to the repository ``models/`` directory (not ``backend/models``).
 
@@ -28,7 +28,6 @@ LENS_MODULES = [
     "app.ml.training.train_behavioral",
     "app.ml.training.train_graph",
     "app.ml.training.train_temporal",
-    "app.ml.training.train_document",
     "app.ml.training.train_offramp",
 ]
 

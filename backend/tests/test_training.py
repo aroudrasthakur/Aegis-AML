@@ -10,7 +10,6 @@ TRAINING_MODULES = [
     "app.ml.training.train_graph",
     "app.ml.training.train_entity",
     "app.ml.training.train_temporal",
-    "app.ml.training.train_document",
     "app.ml.training.train_offramp",
     "app.ml.training.train_meta",
 ]

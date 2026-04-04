@@ -52,7 +52,6 @@ train-lenses-parallel:
 	python -m app.ml.training.train_behavioral --data-dir ../data/processed & \
 	python -m app.ml.training.train_graph --data-dir ../data/processed & \
 	python -m app.ml.training.train_temporal --data-dir ../data/processed & \
-	python -m app.ml.training.train_document --data-dir ../data/processed & \
 	python -m app.ml.training.train_offramp --data-dir ../data/processed & \
 	wait
 

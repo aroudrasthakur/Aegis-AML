@@ -21,7 +21,6 @@ def explain_transaction(transaction_id: str) -> dict | None:
         "graph": score.get("graph_score", 0),
         "entity": score.get("entity_score", 0),
         "temporal": score.get("temporal_score", 0),
-        "document": score.get("document_score", 0),
         "offramp": score.get("offramp_score", 0),
     }
     

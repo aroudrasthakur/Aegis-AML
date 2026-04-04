@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     graph_model_path: str = str(MODELS_DIR / "graph" / "gat_model.pt")
     entity_model_path: str = str(MODELS_DIR / "entity" / "entity_classifier.pkl")
     temporal_model_path: str = str(MODELS_DIR / "temporal" / "lstm_model.pt")
-    document_model_path: str = str(MODELS_DIR / "document" / "document_classifier.pkl")
     offramp_model_path: str = str(MODELS_DIR / "offramp" / "offramp_classifier.pkl")
     meta_model_path: str = str(MODELS_DIR / "meta" / "meta_model.pkl")
     threshold_policy_path: str = str(MODELS_DIR / "artifacts" / "threshold_config.json")

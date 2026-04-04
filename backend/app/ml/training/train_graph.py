@@ -270,25 +270,27 @@ def _train_full_batch(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
             optimizer.step()
 
-        if epoch % 10 == 0 or epoch == 1:
-            val_ap = _eval_val_pr_auc(model, data)
-            logger.info(
-                "Epoch %d/%d  loss=%.4f  val_PR-AUC=%.4f",
-                epoch,
-                cfg.epochs,
-                loss.item(),
-                val_ap,
-            )
-            if val_ap > best_ap:
-                best_ap = val_ap
-                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-                wait = 0
-            else:
-                wait += 1
-                if wait >= cfg.patience:
-                    logger.info("Early stopping at epoch %d", epoch)
-                    break
-            model.train()
+        val_ap = _eval_val_pr_auc(model, data)
+        logger.info(
+            "Graph %s (full-batch) epoch %d/%d  loss=%.4f  val_PR-AUC=%.4f",
+            cfg.model_type.upper(),
+            epoch,
+            cfg.epochs,
+            loss.item(),
+            val_ap,
+        )
+        if val_ap > best_ap:
+            best_ap = val_ap
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            wait = 0
+        else:
+            wait += 1
+            if wait >= cfg.patience:
+                logger.info(
+                    "Graph %s early stopping at epoch %d", cfg.model_type.upper(), epoch
+                )
+                break
+        model.train()
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -365,25 +367,27 @@ def _train_neighbor(
             n_batches += 1
 
         loss_m = epoch_loss / max(n_batches, 1)
-        if epoch % 10 == 0 or epoch == 1:
-            val_ap = _eval_val_pr_auc(model, data_dev)
-            logger.info(
-                "Epoch %d/%d  loss=%.4f  val_PR-AUC=%.4f",
-                epoch,
-                cfg.epochs,
-                loss_m,
-                val_ap,
-            )
-            if val_ap > best_ap:
-                best_ap = val_ap
-                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-                wait = 0
-            else:
-                wait += 1
-                if wait >= cfg.patience:
-                    logger.info("Early stopping at epoch %d", epoch)
-                    break
-            model.train()
+        val_ap = _eval_val_pr_auc(model, data_dev)
+        logger.info(
+            "Graph %s (neighbor) epoch %d/%d  loss=%.4f  val_PR-AUC=%.4f",
+            cfg.model_type.upper(),
+            epoch,
+            cfg.epochs,
+            loss_m,
+            val_ap,
+        )
+        if val_ap > best_ap:
+            best_ap = val_ap
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            wait = 0
+        else:
+            wait += 1
+            if wait >= cfg.patience:
+                logger.info(
+                    "Graph %s early stopping at epoch %d", cfg.model_type.upper(), epoch
+                )
+                break
+        model.train()
 
     if best_state is not None:
         model.load_state_dict(best_state)

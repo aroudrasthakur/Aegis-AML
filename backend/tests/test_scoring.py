@@ -43,7 +43,6 @@ class TestInferencePipelineStructure:
         assert hasattr(pipeline, "graph")
         assert hasattr(pipeline, "entity")
         assert hasattr(pipeline, "temporal")
-        assert hasattr(pipeline, "document")
         assert hasattr(pipeline, "offramp")
 
     def test_initial_state(self):
@@ -97,7 +96,7 @@ class TestScoreTransactionsReturnsResults:
         required_keys = {
             "transaction_id", "meta_score", "risk_level",
             "behavioral_score", "graph_score", "entity_score",
-            "temporal_score", "document_score", "offramp_score",
+            "temporal_score", "offramp_score",
             "heuristic_triggered_count", "coverage_tier",
         }
         for r in results:

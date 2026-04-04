@@ -7,7 +7,6 @@ export interface LensRadarScores {
   graph: number;
   entity: number;
   temporal: number;
-  document: number;
   offramp: number;
 }
 
@@ -20,7 +19,6 @@ const LABELS = [
   "Graph",
   "Entity",
   "Temporal",
-  "Document",
   "Off-ramp",
 ] as const;
 
@@ -35,7 +33,6 @@ export default function LensRadarChart({ scores }: LensRadarChartProps) {
       scores.graph,
       scores.entity,
       scores.temporal,
-      scores.document,
       scores.offramp,
     ];
     const theta = [...LABELS, LABELS[0]];

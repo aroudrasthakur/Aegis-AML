@@ -1,4 +1,4 @@
-"""Tests for the 6 ML lens predict() interfaces (no trained models loaded)."""
+"""Tests for the 5 ML lens predict() interfaces (no trained models loaded)."""
 import sys
 import types
 from unittest.mock import MagicMock
@@ -33,7 +33,6 @@ from app.ml.lenses.behavioral_model import BehavioralLens
 from app.ml.lenses.graph_model import GraphLens
 from app.ml.lenses.entity_model import EntityLens
 from app.ml.lenses.temporal_model import TemporalLens
-from app.ml.lenses.document_model import DocumentLens
 from app.ml.lenses.offramp_model import OfframpLens
 
 
@@ -133,19 +132,6 @@ class TestTemporalLensPredict:
         result = lens.predict(df, wallets)
         for w in wallets:
             assert w in result["temporal_scores"]
-
-
-class TestDocumentLensPredict:
-    def test_returns_expected_keys(self, feature_df, heuristic_vec):
-        lens = DocumentLens()
-        result = lens.predict(feature_df, heuristic_vec)
-        assert "document_score" in result
-        assert "document_lens_mode" in result
-
-    def test_limited_mode_without_documents(self, feature_df):
-        lens = DocumentLens()
-        result = lens.predict(feature_df)
-        assert result["document_lens_mode"] == "limited"
 
 
 class TestOfframpLensPredict:

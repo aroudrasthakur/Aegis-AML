@@ -37,19 +37,19 @@ INSERT INTO public.edges (sender_wallet, receiver_wallet, transaction_id, amount
 -- Two transaction scores with different implied risk levels
 INSERT INTO public.transaction_scores (
   transaction_id, behavioral_score, behavioral_anomaly_score, graph_score, entity_score,
-  temporal_score, document_score, offramp_score, meta_score, predicted_label, explanation_summary
+  temporal_score, offramp_score, meta_score, predicted_label, explanation_summary
 ) VALUES
   (
     'tx_001',
     0.12, 0.08, 0.15, 0.10,
-    0.11, 0.05, 0.09, 0.13,
+    0.11, 0.09, 0.13,
     'low_risk',
     'Small amount, routine timing, no graph anomalies.'
   ),
   (
     'tx_007',
     0.78, 0.82, 0.71, 0.65,
-    0.74, 0.40, 0.69, 0.76,
+    0.74, 0.69, 0.76,
     'high_risk',
     'Large transfer late in window; elevated graph and velocity signals.'
   );

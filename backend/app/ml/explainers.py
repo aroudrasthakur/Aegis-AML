@@ -129,12 +129,12 @@ def generate_explanation_text(
     if coverage_tier == "tier0":
         parts.append(
             "Note: This assessment is based on on-chain data only. "
-            "Entity intelligence and document verification data were not available."
+            "Entity intelligence and off-chain KYC or supporting records were not available."
         )
     elif coverage_tier == "tier1":
         parts.append(
             "This assessment incorporates address tag intelligence. "
-            "Full entity and document data were not available."
+            "Full entity and richer off-chain context were not available."
         )
 
     return " ".join(parts)
@@ -148,7 +148,6 @@ def _humanize_lens(key: str) -> str:
         "graph_score": "Graph Structure",
         "entity_score": "Entity Clustering",
         "temporal_score": "Temporal Patterns",
-        "document_score": "Document Consistency",
         "offramp_score": "Off-ramp Detection",
     }
     return mapping.get(key, key.replace("_", " ").title())

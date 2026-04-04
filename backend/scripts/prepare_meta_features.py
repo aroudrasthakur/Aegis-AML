@@ -26,7 +26,6 @@ META_FEATURES = [
     "graph_score",
     "entity_score",
     "temporal_score",
-    "document_score",
     "offramp_score",
     "heuristic_mean",
     "heuristic_max",

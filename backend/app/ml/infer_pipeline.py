@@ -14,7 +14,6 @@ import pandas as pd
 from app.config import settings
 from app.ml.heuristics.runner import run_all as run_heuristics
 from app.ml.lenses.behavioral_model import BehavioralLens
-from app.ml.lenses.document_model import DocumentLens
 from app.ml.lenses.entity_model import EntityLens
 from app.ml.lenses.graph_model import GraphLens
 from app.ml.lenses.offramp_model import OfframpLens
@@ -33,7 +32,7 @@ class InferencePipeline:
     Ordering contract:
         1. Feature extraction
         2. Heuristics (always first — zero-ML fallback)
-        3. Parallel lenses: behavioral, graph, temporal, document, offramp
+        3. Parallel lenses: behavioral, graph, temporal, offramp
         4. Entity lens (depends on graph embeddings from step 3)
         5. Meta-learner on stacked scores
         6. Threshold decision
@@ -44,7 +43,6 @@ class InferencePipeline:
         self.graph = GraphLens()
         self.entity = EntityLens()
         self.temporal = TemporalLens()
-        self.document = DocumentLens()
         self.offramp = OfframpLens()
         self.meta_model = None
         self.meta_feature_names: list[str] = []
@@ -58,7 +56,6 @@ class InferencePipeline:
         self.graph.load(settings.graph_model_path)
         self.entity.load(settings.entity_model_path)
         self.temporal.load(settings.temporal_model_path)
-        self.document.load(settings.document_model_path)
         self.offramp.load(settings.offramp_model_path)
 
         meta_path = Path(settings.meta_model_path)
@@ -130,7 +127,7 @@ class InferencePipeline:
             )
             h_vec = np.array(h_result["heuristic_vector"], dtype=np.float32)
 
-            # --- 3. Parallel lens group: behavioral, graph, temporal, document, offramp ---
+            # --- 3. Parallel lens group: behavioral, graph, temporal, offramp ---
             lens_scores = self._run_parallel_lenses(
                 tx, row_features, graph, node_features, h_vec, data_flags, context,
             )
@@ -172,7 +169,6 @@ class InferencePipeline:
                 "graph_score": float(lens_scores.get("graph_score", 0)),
                 "entity_score": float(lens_scores.get("entity_score", 0)),
                 "temporal_score": float(lens_scores.get("temporal_score", 0)),
-                "document_score": float(lens_scores.get("document_score", 0)),
                 "offramp_score": float(lens_scores.get("offramp_score", 0)),
                 "heuristic_vector": h_result["heuristic_vector"],
                 "applicability_vector": h_result["applicability_vector"],
@@ -221,21 +217,15 @@ class InferencePipeline:
             out = self.temporal.predict(df, [wallet_id])
             scores["temporal_score"] = out["temporal_scores"].get(wallet_id, 0.0)
 
-        def _document() -> None:
-            doc_events = context.get("document_events") if data_flags.has_document_intel else None
-            out = self.document.predict(row_features if not row_features.empty else None, h_vec, doc_events)
-            scores["document_score"] = float(np.mean(out["document_score"]))
-
         def _offramp() -> None:
             out = self.offramp.predict(row_features if not row_features.empty else pd.DataFrame(), h_vec)
             scores["offramp_score"] = float(np.mean(out["offramp_score"]))
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
+        with ThreadPoolExecutor(max_workers=4) as pool:
             futures = [
                 pool.submit(_behavioral),
                 pool.submit(_graph),
                 pool.submit(_temporal),
-                pool.submit(_document),
                 pool.submit(_offramp),
             ]
             for fut in futures:
@@ -263,7 +253,6 @@ class InferencePipeline:
             "graph_score": lens_scores.get("graph_score", 0),
             "entity_score": lens_scores.get("entity_score", 0),
             "temporal_score": lens_scores.get("temporal_score", 0),
-            "document_score": lens_scores.get("document_score", 0),
             "offramp_score": lens_scores.get("offramp_score", 0),
             "heuristic_mean": float(h_nonzero.mean()) if len(h_nonzero) > 0 else 0.0,
             "heuristic_max": float(h_vec.max()),
@@ -278,7 +267,7 @@ class InferencePipeline:
             "coverage_tier_2": float(data_flags.coverage_tier.value == "tier2"),
             "n_lenses_available": sum(1 for k in (
                 "behavioral_score", "graph_score", "entity_score",
-                "temporal_score", "document_score", "offramp_score",
+                "temporal_score", "offramp_score",
             ) if lens_scores.get(k, 0) != 0),
         }
 
@@ -289,9 +278,9 @@ class InferencePipeline:
 
         # Fallback: weighted average when meta-model is not trained yet
         weights = {
-            "behavioral_score": 0.20, "graph_score": 0.15, "entity_score": 0.10,
-            "temporal_score": 0.15, "document_score": 0.10, "offramp_score": 0.10,
-            "heuristic_max": 0.20,
+            "behavioral_score": 0.225, "graph_score": 0.175, "entity_score": 0.125,
+            "temporal_score": 0.175, "offramp_score": 0.125,
+            "heuristic_max": 0.175,
         }
         score = sum(meta_dict.get(k, 0) * w for k, w in weights.items())
         return float(np.clip(score, 0, 1))

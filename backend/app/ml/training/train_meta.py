@@ -29,13 +29,12 @@ OUTPUT_DIR = MODELS_DIR / "meta"
 ARTIFACTS_DIR = MODELS_DIR / "artifacts"
 
 META_FEATURES = [
-    # 6 lens scores
+    # 5 lens scores
     "behavioral_score",
     "behavioral_anomaly_score",
     "graph_score",
     "entity_score",
     "temporal_score",
-    "document_score",
     "offramp_score",
     # heuristic aggregates
     "heuristic_mean",
@@ -110,7 +109,6 @@ def main() -> None:
         MODELS_DIR / "graph" / "gat_model.pt",
         MODELS_DIR / "entity" / "entity_classifier.pkl",
         MODELS_DIR / "temporal" / "lstm_model.pt",
-        MODELS_DIR / "document" / "document_classifier.pkl",
         MODELS_DIR / "offramp" / "offramp_classifier.pkl",
     ]
     missing = [str(m) for m in required_models if not m.exists()]

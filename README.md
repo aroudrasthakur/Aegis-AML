@@ -7,7 +7,7 @@
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> A production-grade AML system combining 185 rule-based heuristics with 6 specialized ML models to detect money laundering patterns across blockchain networks.
+> A production-grade AML system combining 185 rule-based heuristics with 5 specialized ML models to detect money laundering patterns across blockchain networks.
 
 ---
 
@@ -18,7 +18,7 @@ Aegis AML is a comprehensive anti-money laundering detection system designed for
 ### Key Features
 
 - 🔍 **185 Typology-Specific Heuristics** - Comprehensive coverage of traditional, blockchain-native, hybrid, and AI-enabled laundering patterns
-- 🧠 **6 Specialized ML Lenses** - Multi-perspective analysis (Behavioral, Graph, Entity, Temporal, Document, Off-ramp)
+- 🧠 **5 Specialized ML Lenses** - Multi-perspective analysis (Behavioral, Graph, Entity, Temporal, Off-ramp)
 - 📊 **Ensemble Meta-Learner** - XGBoost stacking model combining all signals with calibrated risk scores
 - 🌐 **Interactive Dashboard** - Real-time visualization with network graphs, risk scoring, and investigation tools
 - 🔬 **Explainable AI** - SHAP-based explanations and plain-English summaries for every detection
@@ -45,7 +45,6 @@ Aegis AML is a comprehensive anti-money laundering detection system designed for
 │      ├─ Behavioral (XGBoost + Autoencoder)                    │
 │      ├─ Graph (GAT Neural Network)                            │
 │      ├─ Temporal (LSTM)                                        │
-│      ├─ Document (XGBoost + NLP)                              │
 │      └─ Off-ramp (XGBoost)                                     │
 │           ↓                                                     │
 │  6. Entity Lens → Community Detection + Clustering            │
@@ -255,13 +254,7 @@ Detecting AI-assisted laundering:
 **Purpose:** Temporal pattern anomalies  
 **Features:** Transaction sequences, timing intervals, burst detection
 
-### 5. Document Lens
-
-**Architecture:** XGBoost + NLP  
-**Purpose:** Metadata consistency checking  
-**Features:** Document completeness, narrative analysis, template detection
-
-### 6. Off-ramp Lens
+### 5. Off-ramp Lens
 
 **Architecture:** XGBoost  
 **Purpose:** Conversion and exit detection  
@@ -271,7 +264,7 @@ Detecting AI-assisted laundering:
 
 **Architecture:** Calibrated XGBoost  
 **Purpose:** Ensemble all signals  
-**Input:** 6 lens scores + heuristic aggregates + data availability flags  
+**Input:** 5 lens scores + heuristic aggregates + data availability flags  
 **Output:** Calibrated risk probability (0-1)
 
 ---
@@ -292,7 +285,6 @@ python -m scripts.prepare_features --output data/processed
 python -m app.ml.training.train_behavioral --data-dir data/processed
 python -m app.ml.training.train_graph --data-dir data/processed
 python -m app.ml.training.train_temporal --data-dir data/processed
-python -m app.ml.training.train_document --data-dir data/processed
 python -m app.ml.training.train_offramp --data-dir data/processed
 python -m app.ml.training.train_entity --data-dir data/processed  # Requires graph embeddings
 ```
@@ -300,7 +292,7 @@ python -m app.ml.training.train_entity --data-dir data/processed  # Requires gra
 ### Train Meta-Learner
 
 ```bash
-# Requires all 6 lenses to be trained first
+# Requires all 5 lenses to be trained first
 python -m app.ml.training.train_meta --data-dir data/processed
 ```
 
@@ -321,7 +313,7 @@ The system uses Optuna for automated hyperparameter optimization:
 - Sortable, filterable transaction table
 - Risk score visualization
 - Heuristic trigger badges
-- 6-lens radar chart per transaction
+- 5-lens radar chart per transaction
 - SHAP-based feature importance
 
 ### Wallet Detail
@@ -484,7 +476,7 @@ aegis-aml/
 │   │   ├── api/              # FastAPI routes
 │   │   ├── ml/
 │   │   │   ├── heuristics/   # 185 typology rules
-│   │   │   ├── lenses/       # 6 ML models
+│   │   │   ├── lenses/       # 5 ML models
 │   │   │   ├── training/     # Training scripts
 │   │   │   └── infer_pipeline.py
 │   │   ├── services/         # Business logic
@@ -509,7 +501,6 @@ aegis-aml/
 │   ├── graph/
 │   ├── entity/
 │   ├── temporal/
-│   ├── document/
 │   ├── offramp/
 │   ├── meta/
 │   └── artifacts/
@@ -619,7 +610,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [ ] Real-time streaming inference
 - [ ] Multi-chain support (Ethereum, Solana, etc.)
-- [ ] Advanced NLP for document analysis
 - [ ] Federated learning for privacy-preserving training
 - [ ] Integration with blockchain explorers
 - [ ] Mobile app for investigators
