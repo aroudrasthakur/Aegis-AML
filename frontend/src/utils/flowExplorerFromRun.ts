@@ -23,19 +23,44 @@ function formatAmount(v: unknown): string {
   return `$${n.toFixed(0)}`;
 }
 
-function riskLabelFromScore(r: number): string {
-  if (!Number.isFinite(r) || r <= 0) return "—";
-  if (r >= 0.85) return "Critical";
-  if (r >= 0.65) return "High";
-  if (r >= 0.45) return "Elevated";
-  return "Moderate";
+type RiskLevel = "low" | "medium-low" | "medium" | "high";
+const RISK_ORDER: RiskLevel[] = ["low", "medium-low", "medium", "high"];
+
+function normalizeRiskLevel(level?: string | null): RiskLevel | null {
+  if (!level) return null;
+  const v = String(level).toLowerCase().trim() as RiskLevel;
+  return (RISK_ORDER as string[]).includes(v) ? v : null;
+}
+
+function levelFromScore(score: number): RiskLevel {
+  if (!Number.isFinite(score)) return "low";
+  if (score >= 0.9) return "high";
+  if (score >= 0.75) return "medium";
+  if (score <= 0.3) return "low";
+  return "medium-low";
+}
+
+function maxRiskLevel(...levels: Array<string | null | undefined>): RiskLevel {
+  let best: RiskLevel = "low";
+  for (const level of levels) {
+    const n = normalizeRiskLevel(level);
+    if (!n) continue;
+    if (RISK_ORDER.indexOf(n) > RISK_ORDER.indexOf(best)) {
+      best = n;
+    }
+  }
+  return best;
+}
+
+function prettyRiskLevel(level: RiskLevel): string {
+  return level === "medium-low" ? "Medium-Low" : level[0].toUpperCase() + level.slice(1);
 }
 
 function riskColorFromScore(r: number): string {
   if (!Number.isFinite(r) || r <= 0) return "#6b7c90";
-  if (r >= 0.85) return "#EF4444";
-  if (r >= 0.65) return "#F97316";
-  if (r >= 0.45) return "#F59E0B";
+  if (r >= 0.9) return "#EF4444";
+  if (r >= 0.75) return "#F97316";
+  if (r > 0.3) return "#F59E0B";
   return "#34d399";
 }
 
@@ -306,11 +331,16 @@ export function buildFlowClusterFromSnapshot(
   const txlist: FlowTxRow[] = suspiciousForCluster.slice(0, 12).map((t) => ({
     hash: formatWallet(t.transaction_id),
     route: t.typology ?? t.risk_level ?? "—",
-    amount: t.meta_score != null ? `${(t.meta_score * 100).toFixed(0)}% risk` : "—",
+    amount: prettyRiskLevel(maxRiskLevel(t.risk_level, levelFromScore(Number(t.meta_score ?? 0)))),
   }));
 
   const risk = clusterRiskFromRunData(cluster, suspiciousForCluster);
   const rc = riskColorFromScore(risk);
+  const clusterLevel = maxRiskLevel(
+    cluster.risk_level,
+    ...suspiciousForCluster.map((s) => s.risk_level),
+    levelFromScore(risk),
+  );
 
   return {
     key: cluster.id,
@@ -319,7 +349,7 @@ export function buildFlowClusterFromSnapshot(
     typologyShort: (cluster.typology ?? "Cluster").slice(0, 18),
     risk,
     riskColor: rc,
-    riskLabel: riskLabelFromScore(risk),
+    riskLabel: prettyRiskLevel(clusterLevel),
     wallets: cluster.wallet_count,
     tx: cluster.tx_count,
     totalAmount: formatAmount(cluster.total_amount),
@@ -330,3 +360,5 @@ export function buildFlowClusterFromSnapshot(
     edges,
   };
 }
+
+

@@ -204,7 +204,8 @@ def _loss_batch(
 ) -> torch.Tensor:
     if not focal:
         return F.cross_entropy(logits, target, weight=weight_vec)
-    ce = F.cross_entropy(logits, target, reduction="none", weight=weight_vec[target])
+    ce = F.cross_entropy(logits, target, reduction="none")
+    ce = ce * weight_vec[target]
     pt = torch.exp(-ce)
     return ((1 - pt) ** gamma * ce).mean()
 

@@ -1,4 +1,5 @@
 """Orchestrate ML inference and persist scores to Supabase."""
+import threading
 from app.ml.infer_pipeline import InferencePipeline
 from app.repositories.scores_repo import upsert_transaction_scores, upsert_wallet_scores
 from app.repositories.heuristics_repo import upsert_heuristic_results
@@ -7,13 +8,17 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 _pipeline: InferencePipeline | None = None
+_pipeline_lock = threading.Lock()
 
 
 def get_pipeline() -> InferencePipeline:
     global _pipeline
     if _pipeline is None:
-        _pipeline = InferencePipeline()
-        _pipeline.load_models()
+        with _pipeline_lock:
+            if _pipeline is None:
+                pipeline_tmp = InferencePipeline()
+                pipeline_tmp.load_models()
+                _pipeline = pipeline_tmp
     return _pipeline
 
 

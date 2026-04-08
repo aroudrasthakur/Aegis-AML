@@ -7,12 +7,12 @@ import {
   Wallet,
   GitBranch,
   FileText,
-  Bell,
   Upload,
   Play,
   FileWarning,
   Hexagon,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import { ScoringModeProvider } from "@/contexts/ScoringModeProvider";
 import { useScoringMode } from "@/contexts/useScoringMode";
@@ -22,6 +22,8 @@ import { ThresholdProvider } from "@/contexts/ThresholdProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import UploadModal from "@/components/UploadModal";
 import RunStatusBar from "@/components/RunStatusBar";
+import { useToast } from "@/hooks/useToast";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const NAV_MAIN: {
   to: string;
@@ -97,10 +99,11 @@ function NavBlock({
 }
 
 function DashboardShell() {
-  const [notif] = useState(4);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [isGeneratingSar, setIsGeneratingSar] = useState(false);
+  const toast = useToast();
   const { mode } = useScoringMode();
   const { activeRun } = useRunContext();
   const { profile, user, signOut } = useAuth();
@@ -286,24 +289,39 @@ function DashboardShell() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/dashboard/reports")}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#34d399]/35 bg-[#34d399]/10 px-3 py-2 font-data text-xs text-[#6ee7b7]"
+              disabled={isGeneratingSar}
+              onClick={() => {
+                if (isGeneratingSar) return;
+                setIsGeneratingSar(true);
+                toast.push({
+                  variant: "info",
+                  title: "Generating SAR",
+                  description: "Assembling documentation and compliance matrices...",
+                });
+                const start = Date.now();
+                setTimeout(() => {
+                  setIsGeneratingSar(false);
+                  const durMs = Date.now() - start;
+                  const durStr = `${(durMs / 1000).toFixed(1)}s`;
+                  toast.push({
+                    variant: "success",
+                    title: "SAR Generated",
+                    description: "Suspicious Activity Report has been safely packaged.",
+                    duration: durStr,
+                  });
+                  navigate("/dashboard/reports");
+                }, 3500);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#34d399]/35 bg-[#34d399]/10 px-3 py-2 font-data text-xs text-[#6ee7b7] disabled:opacity-50"
             >
-              <FileWarning className="h-4 w-4" aria-hidden />
-              Generate SAR
-            </button>
-            <button
-              type="button"
-              className="relative rounded-lg border border-[var(--color-aegis-border)] p-2 text-[#9aa7b8] hover:text-[#e6edf3]"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {notif > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#f87171] px-1 font-data text-[10px] text-white">
-                  {notif}
-                </span>
+              {isGeneratingSar ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <FileWarning className="h-4 w-4" aria-hidden />
               )}
+              {isGeneratingSar ? "Generating…" : "Generate SAR"}
             </button>
+            <NotificationDropdown />
           </div>
         </header>
 

@@ -646,7 +646,7 @@ export function FlowCanvas({
           <div className="max-w-[min(260px,45%)] shrink-0 rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117] px-3 py-1.5">
             <p className="font-data text-[11px] text-[#6ee7b7]">{typologyBadge}</p>
             <p className="mt-0.5 font-data text-[13px] tabular-nums text-[#e6edf3]">
-              Risk {(cluster.risk * 100).toFixed(0)}%
+              Risk {cluster.riskLabel}
             </p>
           </div>
           <div className="rounded-lg border border-[var(--color-aegis-border)] bg-[#0d1117]/95 px-3 py-1.5">

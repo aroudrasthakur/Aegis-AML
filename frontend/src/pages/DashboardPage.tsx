@@ -25,6 +25,7 @@ import type {
 } from "@/types/dashboard";
 import { formatScore4 } from "@/utils/formatters";
 import { mapEnrichedSuspiciousToQueueRow } from "@/utils/suspiciousQueueRow";
+import { resolveRiskTier, riskTierRank } from "@/utils/riskTiers";
 
 const DASH_QUEUE_PAGE_SIZE = 10;
 
@@ -118,7 +119,11 @@ export default function DashboardPage() {
           const detail = topTxns.find((d: { transaction_id: string }) => d.transaction_id === t.transaction_id);
           return mapEnrichedSuspiciousToQueueRow(t, tierConfig, detail ?? null);
         });
-        rows.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
+        rows.sort((a, b) => {
+          const at = resolveRiskTier(a.risk_score ?? null, tierConfig, a.risk_level);
+          const bt = resolveRiskTier(b.risk_score ?? null, tierConfig, b.risk_level);
+          return riskTierRank(bt) - riskTierRank(at);
+        });
         setQueue(rows);
         if (rows.length > 0) setSelectedId(rows[0].id);
         else setSelectedId(null);
@@ -131,8 +136,10 @@ export default function DashboardPage() {
 
   const filteredQueue = useMemo(() => {
     if (queueFilter === "critical") {
-      const cutoff = tierConfig?.highRiskThreshold ?? 0.9;
-      return queue.filter((r) => (r.risk_score ?? 0) >= cutoff);
+      return queue.filter((r) => {
+        const tier = resolveRiskTier(r.risk_score ?? null, tierConfig, r.risk_level);
+        return tier === "high";
+      });
     }
     return queue;
   }, [queue, queueFilter, tierConfig]);

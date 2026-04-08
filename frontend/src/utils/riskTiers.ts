@@ -10,6 +10,7 @@
  */
 
 export type RiskTier = "low" | "medium-low" | "medium" | "high";
+const RISK_TIER_ORDER: RiskTier[] = ["low", "medium-low", "medium", "high"];
 
 export interface RiskTierConfig {
   lowRiskCeiling: number;
@@ -93,6 +94,18 @@ export function resolveRiskTier(
   if (score == null) return null;
   if (!config) return null;
   return riskTierFromScore(score, config);
+}
+
+export function normalizeRiskTier(level?: string | null): RiskTier | null {
+  if (!level) return null;
+  const normalized = level.toLowerCase().trim() as RiskTier;
+  return normalized in TIER_META ? normalized : null;
+}
+
+export function riskTierRank(level?: string | null): number {
+  const tier = normalizeRiskTier(level);
+  if (!tier) return -1;
+  return RISK_TIER_ORDER.indexOf(tier);
 }
 
 export function riskBarClassFromScore(

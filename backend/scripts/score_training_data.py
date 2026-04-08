@@ -62,8 +62,8 @@ def _score_behavioral(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     anomaly_score = np.zeros(len(df), dtype=np.float64)
 
     if xgb_path.exists():
-        xgb = joblib.load(xgb_path)
-        beh_score = xgb.predict_proba(X)[:, 1].astype(np.float64)
+        xgb_model = joblib.load(xgb_path)
+        beh_score = xgb_model.predict_proba(X)[:, 1].astype(np.float64)
         logger.info("Behavioral XGBoost scored %d rows", len(df))
 
     if ae_path.exists():
@@ -73,11 +73,14 @@ def _score_behavioral(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
         input_dim = state.get("input_dim", X.shape[1])
         ae = BehavioralAutoencoder(input_dim)
         ae.load_state_dict(state["model_state_dict"])
+        anomaly_threshold = state.get("anomaly_threshold", 1.0)
+        if anomaly_threshold <= 0: anomaly_threshold = 1.0
         ae.to(device).eval()
         with torch.no_grad():
             t = torch.FloatTensor(X).to(device)
             recon = ae(t)
-            anomaly_score = ((t - recon) ** 2).mean(dim=1).cpu().numpy().astype(np.float64)
+            mse = ((t - recon) ** 2).mean(dim=1).cpu().numpy().astype(np.float64)
+            anomaly_score = np.clip(mse / anomaly_threshold, 0.0, 1.0)
         logger.info("Behavioral autoencoder scored %d rows", len(df))
 
     return beh_score, anomaly_score
@@ -115,12 +118,6 @@ def _score_graph(df: pd.DataFrame) -> np.ndarray:
         idx_to_node = json.load(f)
     node_to_idx = {str(v): int(k) for k, v in idx_to_node.items()}
 
-    embeddings = np.load(emb_path)
-    n_nodes = len(idx_to_node)
-
-    node_features_np = np.zeros((n_nodes, in_ch), dtype=np.float32)
-    node_features_np[:, :min(in_ch, embeddings.shape[1])] = embeddings[:, :in_ch]
-
     edges_path = Path(MODELS_DIR).parent / "data" / "processed" / "edges.csv"
     if not edges_path.exists():
         edges_path = Path(MODELS_DIR).parents[0].parent / "data" / "processed" / "edges.csv"
@@ -128,20 +125,51 @@ def _score_graph(df: pd.DataFrame) -> np.ndarray:
     logger.info("Building graph edge_index for scoring...")
     edges_df = pd.read_csv(edges_path) if edges_path.exists() else pd.DataFrame()
 
-    edge_src, edge_dst = [], []
-    for _, row in edges_df.iterrows():
-        s = str(row.get("source", row.get("sender_wallet", "")))
-        d = str(row.get("target", row.get("receiver_wallet", "")))
-        si = node_to_idx.get(s)
-        di = node_to_idx.get(d)
-        if si is not None and di is not None:
-            edge_src.append(si)
-            edge_dst.append(di)
+    n_nodes = len(idx_to_node)
+    src_col = "source" if "source" in edges_df.columns else "sender_wallet"
+    dst_col = "target" if "target" in edges_df.columns else "receiver_wallet"
 
-    if edge_src:
-        edge_index = torch.tensor([edge_src, edge_dst], dtype=torch.long).to(device)
+    if not edges_df.empty and src_col in edges_df.columns and dst_col in edges_df.columns:
+        valid_edges = edges_df.dropna(subset=[src_col, dst_col])
+        src_strs = valid_edges[src_col].astype(str)
+        dst_strs = valid_edges[dst_col].astype(str)
+        edge_src = src_strs.map(node_to_idx).dropna()
+        edge_dst = dst_strs.map(node_to_idx).dropna()
+        
+        # Keep only edges where both ends are in mapping
+        valid_mask = edge_src.index.intersection(edge_dst.index)
+        edge_src_arr = edge_src.loc[valid_mask].astype(int).values
+        edge_dst_arr = edge_dst.loc[valid_mask].astype(int).values
+
+        if len(edge_src_arr) > 0:
+            edge_index = torch.tensor([edge_src_arr, edge_dst_arr], dtype=torch.long).to(device)
+        else:
+            edge_index = torch.zeros((2, 0), dtype=torch.long, device=device)
+            
+        from app.services.graph_service import build_wallet_graph, compute_node_features
+        # Build G to compute correct node features (C-5 fix)
+        edge_records = []
+        for s, d, amt in zip(src_strs, dst_strs, valid_edges.get("amount", pd.Series(0, index=valid_edges.index))):
+            edge_records.append({"sender_wallet": s, "receiver_wallet": d, "amount": float(amt)})
+        G = build_wallet_graph(edge_records)
+        node_feats = compute_node_features(G, global_metrics="full")
+        
+        node_features_np = np.zeros((n_nodes, in_ch), dtype=np.float32)
+        for w, idx in node_to_idx.items():
+            if w in node_feats:
+                nf = node_feats[w]
+                node_features_np[idx] = [
+                    float(nf.get("in_degree", 0)),
+                    float(nf.get("out_degree", 0)),
+                    float(nf.get("weighted_in", 0.0)),
+                    float(nf.get("weighted_out", 0.0)),
+                    float(nf.get("betweenness_centrality", 0.0)),
+                    float(nf.get("pagerank", 0.0)),
+                    float(nf.get("clustering_coefficient", 0.0)),
+                ][:in_ch]
     else:
         edge_index = torch.zeros((2, 0), dtype=torch.long, device=device)
+        node_features_np = np.zeros((n_nodes, in_ch), dtype=np.float32)
 
     from torch_geometric.data import Data as PygData
     x_t = torch.FloatTensor(node_features_np).to(device)

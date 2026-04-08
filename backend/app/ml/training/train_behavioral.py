@@ -151,12 +151,19 @@ def main() -> None:
     logger.info("Training autoencoder on %d licit samples (input_dim=%d)", len(X_licit), X_licit.shape[1])
     ae = _train_autoencoder(X_licit, X_licit.shape[1], device)
 
+    ae.eval()
+    with torch.no_grad():
+        t_licit = torch.FloatTensor(X_licit).to(device)
+        recon_licit = ae(t_licit)
+        mse_licit = ((t_licit - recon_licit) ** 2).mean(dim=1).cpu().numpy()
+        anomaly_threshold = float(np.percentile(mse_licit, 99)) if len(mse_licit) > 0 else 1.0
+
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(xgb_model, OUTPUT_DIR / "xgboost_behavioral.pkl")
     joblib.dump(scaler, OUTPUT_DIR / "scaler_behavioral.pkl")
     joblib.dump(feature_names, OUTPUT_DIR / "feature_names.pkl")
     torch.save(
-        {"model_state_dict": ae.state_dict(), "input_dim": X_licit.shape[1], "latent_dim": AE_LATENT},
+        {"model_state_dict": ae.state_dict(), "input_dim": X_licit.shape[1], "latent_dim": AE_LATENT, "anomaly_threshold": anomaly_threshold},
         OUTPUT_DIR / "autoencoder_behavioral.pt",
     )
     logger.info("Artifacts saved to %s", OUTPUT_DIR)

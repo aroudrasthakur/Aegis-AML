@@ -16,6 +16,7 @@ import { useThresholds } from "@/contexts/ThresholdProvider";
 import { fetchRunSuspicious, fetchRunReport } from "@/api/runs";
 import type { TransactionQueueRow } from "@/types/transaction";
 import { mapEnrichedSuspiciousToQueueRow } from "@/utils/suspiciousQueueRow";
+import { resolveRiskTier, riskTierRank } from "@/utils/riskTiers";
 
 const PAGE_SIZE_OPTIONS = [8, 10, 12] as const;
 
@@ -68,7 +69,11 @@ export default function TransactionsPage() {
           );
           return mapEnrichedSuspiciousToQueueRow(t, tierConfig, detail ?? null);
         });
-        mapped.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
+        mapped.sort((a, b) => {
+          const at = resolveRiskTier(a.risk_score ?? null, tierConfig, a.risk_level);
+          const bt = resolveRiskTier(b.risk_score ?? null, tierConfig, b.risk_level);
+          return riskTierRank(bt) - riskTierRank(at);
+        });
         setRows(mapped);
       } catch (e) {
         if (!cancelled) {

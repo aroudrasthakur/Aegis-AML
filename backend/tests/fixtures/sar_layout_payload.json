@@ -1,0 +1,49 @@
+{
+  "subject_information": {
+    "full_name": "John A. Doe",
+    "address": "101 Example Street, Chicago, IL",
+    "date_of_birth": "1985-04-12",
+    "identification_number": "0xabc1234567890def",
+    "occupation_or_business_type": "Digital Asset Services"
+  },
+  "reporting_institution": {
+    "institution_name": "Aegis AML Compliance",
+    "branch_location": "Chicago Branch",
+    "contact_person": "Jane Compliance",
+    "contact_information": "555-0100 | compliance@aegis.example",
+    "institution_id": "12-3456789"
+  },
+  "suspicious_activity": {
+    "activity_dates": ["2026-01-10", "2026-01-28"],
+    "activity_types": ["Money Laundering", "Structuring"],
+    "total_amount": "125000.75",
+    "affected_accounts": ["0xabc1234567890def", "0xdef9876543210abc"]
+  },
+  "narrative": {
+    "summary_text": "Initial alert triggered by pattern analysis.\n\nFunds were layered through multiple wallets over 18 days."
+  },
+  "transaction_information": {
+    "transaction_dates": ["2026-01-10", "2026-01-15", "2026-01-28"],
+    "amounts": ["1200.00", "8750.50", "115050.25"],
+    "methods": ["Blockchain Transfer", "Cross-chain Bridge"],
+    "origin_accounts": ["0xabc1234567890def"],
+    "destination_accounts": ["0xdef9876543210abc"],
+    "countries_involved": ["US", "GB"]
+  },
+  "supporting_documentation": {
+    "attachment_refs": ["evidence/graph_snapshot_1.png", "evidence/txn_export.csv"],
+    "notes": "All supporting evidence archived in case vault."
+  },
+  "internal_review_actions": {
+    "actions_taken": ["Escalated to compliance", "Prepared SAR package"],
+    "investigation_opened": true,
+    "account_restricted": false,
+    "filing_date": "2026-02-01",
+    "compliance_approver": "Senior Analyst"
+  },
+  "law_enforcement_notification": {
+    "agency_name": "FinCEN",
+    "notification_date": "2026-02-02",
+    "case_reference_number": "LE-2026-00042"
+  }
+}

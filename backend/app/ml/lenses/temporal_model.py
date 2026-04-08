@@ -37,42 +37,51 @@ class TemporalLens:
         self._device = None
 
     def _build_sequence(self, df: pd.DataFrame, wallet: str) -> np.ndarray:
-        """Build a (1, MAX_SEQ_LEN, 4) padded sequence for one wallet."""
-        sender_col = "sender_wallet" if "sender_wallet" in df.columns else "sender"
-        receiver_col = "receiver_wallet" if "receiver_wallet" in df.columns else "receiver"
-
-        mask = np.zeros(len(df), dtype=bool)
-        if sender_col in df.columns:
-            mask |= (df[sender_col].values == wallet)
-        if receiver_col in df.columns:
-            mask |= (df[receiver_col].values == wallet)
-
-        wallet_txs = df.loc[mask]
-        if "timestamp" in wallet_txs.columns:
-            wallet_txs = wallet_txs.sort_values("timestamp")
-        wallet_txs = wallet_txs.tail(MAX_SEQ_LEN)
-
-        if len(wallet_txs) == 0:
-            return np.zeros((1, MAX_SEQ_LEN, 4), dtype=np.float32)
-
-        amt = wallet_txs["amount"].fillna(0).to_numpy(dtype=np.float32) if "amount" in wallet_txs.columns else np.zeros(len(wallet_txs), dtype=np.float32)
-        tspo = wallet_txs["time_since_prev_out"].fillna(0).to_numpy(dtype=np.float32) if "time_since_prev_out" in wallet_txs.columns else np.zeros(len(wallet_txs), dtype=np.float32)
-        is_sender = (wallet_txs[sender_col].values == wallet).astype(np.float32) if sender_col in wallet_txs.columns else np.zeros(len(wallet_txs), dtype=np.float32)
-        burst = wallet_txs["burstiness_score"].fillna(0).to_numpy(dtype=np.float32) if "burstiness_score" in wallet_txs.columns else np.zeros(len(wallet_txs), dtype=np.float32)
-
-        seq = np.column_stack([amt, tspo, is_sender, burst])
-        if len(seq) < MAX_SEQ_LEN:
-            pad = np.zeros((MAX_SEQ_LEN - len(seq), 4), dtype=np.float32)
-            seq = np.vstack([pad, seq])
-        return seq.reshape(1, MAX_SEQ_LEN, 4)
+        # Kept for backward compatibility if called directly, but predict() is now vectorized
+        pass
 
     def predict(self, transactions_df: pd.DataFrame, wallets: list[str], heuristic_scores: np.ndarray = None) -> dict:
         """Score temporal risk for all wallets in a single batched GPU call."""
         if not wallets:
             return {"temporal_scores": {}}
 
-        seqs = [self._build_sequence(transactions_df, w) for w in wallets]
-        batch = np.concatenate(seqs, axis=0)  # (W, MAX_SEQ_LEN, 4)
+        sender_col = "sender_wallet" if "sender_wallet" in transactions_df.columns else "sender"
+        receiver_col = "receiver_wallet" if "receiver_wallet" in transactions_df.columns else "receiver"
+
+        work = transactions_df
+        if "timestamp" in work.columns:
+            work = work.sort_values("timestamp")
+
+        from collections import defaultdict
+        wallet_txns = defaultdict(list)
+
+        senders = work[sender_col].astype(str).values if sender_col in work.columns else np.zeros(len(work), dtype=str)
+        receivers = work[receiver_col].astype(str).values if receiver_col in work.columns else np.zeros(len(work), dtype=str)
+
+        wallet_set = set(wallets)
+        for i in range(len(work)):
+            s = senders[i]
+            r = receivers[i]
+            if s in wallet_set:
+                wallet_txns[s].append(i)
+            if r in wallet_set and r != s:
+                wallet_txns[r].append(i)
+
+        amt = work["amount"].fillna(0).to_numpy(dtype=np.float32) if "amount" in work.columns else np.zeros(len(work), dtype=np.float32)
+        tspo = work["time_since_prev_out"].fillna(0).to_numpy(dtype=np.float32) if "time_since_prev_out" in work.columns else np.zeros(len(work), dtype=np.float32)
+        burst = work["burstiness_score"].fillna(0).to_numpy(dtype=np.float32) if "burstiness_score" in work.columns else np.zeros(len(work), dtype=np.float32)
+
+        input_dim = self.input_dim if self.input_dim is not None else 4
+        batch = np.zeros((len(wallets), MAX_SEQ_LEN, input_dim), dtype=np.float32)
+
+        for wi, w in enumerate(wallets):
+            idxs = wallet_txns[w][-MAX_SEQ_LEN:]
+            for si, ti in enumerate(idxs):
+                offset = MAX_SEQ_LEN - len(idxs) + si
+                batch[wi, offset, 0] = amt[ti]
+                batch[wi, offset, 1] = tspo[ti]
+                batch[wi, offset, 2] = 1.0 if senders[ti] == w else 0.0
+                batch[wi, offset, 3] = burst[ti]
 
         scores: dict[str, float] = {}
         if self.model is not None:

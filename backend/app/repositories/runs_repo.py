@@ -7,6 +7,7 @@ from typing import Any
 
 from app.supabase_client import get_supabase
 from app.utils.logger import get_logger
+from app.utils.risk_levels import level_from_score, level_rank, max_level
 
 logger = get_logger(__name__)
 
@@ -299,7 +300,13 @@ def insert_cluster_members(cluster_id: str, wallets: list[str]) -> int:
 def get_run_clusters(run_id: str) -> list[dict]:
     sb = get_supabase()
     resp = sb.table("run_clusters").select("*").eq("run_id", run_id).execute()
-    return list(resp.data or [])
+    out: list[dict] = []
+    for c in list(resp.data or []):
+        cc = dict(c)
+        cc["risk_level"] = level_from_score(cc.get("risk_score"))
+        out.append(cc)
+    out.sort(key=lambda x: level_rank(x.get("risk_level")), reverse=True)
+    return out
 
 
 def get_cluster_members(cluster_id: str) -> list[dict]:
@@ -316,14 +323,19 @@ def get_run_wallets(run_id: str) -> list[dict]:
     """Build a wallet-level view by aggregating cluster members, scores, and suspicious txns."""
     sb = get_supabase()
 
-    members = list(
-        (sb.table("run_cluster_members")
-         .select("wallet_address, cluster_id")
-         .eq("cluster_id.run_id", run_id)
-         .execute()).data or []
-    )
+    run_clusters = get_run_clusters(run_id)
+    clusters = {c["id"]: c for c in run_clusters}
+    cluster_ids = [c["id"] for c in run_clusters if c.get("id")]
 
-    clusters = {c["id"]: c for c in get_run_clusters(run_id)}
+    members: list[dict] = []
+    if cluster_ids:
+        members = list(
+            (sb.table("run_cluster_members")
+             .select("wallet_address, cluster_id")
+             .in_("cluster_id", cluster_ids)
+             .execute()).data or []
+        )
+
     scores = get_run_scores(run_id)
     suspicious = get_suspicious_txns(run_id)
 
@@ -358,6 +370,11 @@ def get_run_wallets(run_id: str) -> list[dict]:
                 if cscore > w["risk_score"]:
                     w["risk_score"] = cscore
                     w["top_heuristic"] = cluster.get("typology")
+                w["risk_level"] = max_level(
+                    w.get("risk_level"),
+                    cluster.get("risk_level"),
+                    level_from_score(cscore),
+                )
 
     for st in suspicious:
         tid = st.get("transaction_id", "")
@@ -370,14 +387,19 @@ def get_run_wallets(run_id: str) -> list[dict]:
                 ms = st.get("meta_score", 0) or 0
                 if ms > wallet_map[addr]["risk_score"]:
                     wallet_map[addr]["risk_score"] = ms
-                    wallet_map[addr]["risk_level"] = st.get("risk_level", "low")
                     wallet_map[addr]["top_heuristic"] = st.get("typology")
+                wallet_map[addr]["risk_level"] = max_level(
+                    wallet_map[addr].get("risk_level"),
+                    st.get("risk_level"),
+                    level_from_score(ms),
+                )
 
     result = []
     for w in wallet_map.values():
         w.pop("clusters", None)
+        w["risk_level"] = max_level(w.get("risk_level"), level_from_score(w.get("risk_score")))
         result.append(w)
-    result.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    result.sort(key=lambda x: (level_rank(x.get("risk_level")), x.get("risk_score", 0)), reverse=True)
     return result
 
 
@@ -395,6 +417,12 @@ def insert_run_report(run_id: str, title: str, content: dict) -> dict:
 def get_run_report(run_id: str) -> dict | None:
     sb = get_supabase()
     resp = sb.table("run_reports").select("*").eq("run_id", run_id).maybe_single().execute()
+    return resp.data if resp else None
+
+
+def get_run_report_by_id(report_id: str) -> dict | None:
+    sb = get_supabase()
+    resp = sb.table("run_reports").select("*").eq("id", report_id).maybe_single().execute()
     return resp.data if resp else None
 
 

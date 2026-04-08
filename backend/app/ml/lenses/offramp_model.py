@@ -33,7 +33,7 @@ class OfframpLens:
 
     @staticmethod
     def _heuristic_aggregates(h_vec: np.ndarray | None, n_rows: int = 1) -> np.ndarray:
-        """Aggregate heuristic scores into [mean, max, triggered_count, max].
+        """Aggregate heuristic scores into [mean, max, triggered_count, top_confidence].
 
         Accepts 1-d (single tx) or 2-d (batch N x 185) arrays.
         """
@@ -47,6 +47,8 @@ class OfframpLens:
         nz_count = nz_mask.sum(axis=1).astype(np.float32)
         hm = np.where(nz_count > 0, nz_sum / np.maximum(nz_count, 1), 0.0)
         hx = h.max(axis=1)
+        # Note: hx perfectly mirrors heuristic_top_confidence because 
+        # it is the max confidence across all heuristics.
         return np.column_stack([hm, hx, nz_count, hx]).astype(np.float32)
 
     def predict(self, features_df: pd.DataFrame, heuristic_scores: np.ndarray = None, context: dict = None) -> dict:

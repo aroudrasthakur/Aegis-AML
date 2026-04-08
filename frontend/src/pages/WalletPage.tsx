@@ -8,11 +8,13 @@ import ExplanationPanel from "@/components/ExplanationPanel";
 import RunSelectorDropdown from "@/components/RunSelectorDropdown";
 import { useRunContext } from "@/contexts/useRunContext";
 import { useThresholds } from "@/contexts/ThresholdProvider";
-import { fetchRunWallets, type RunWallet } from "@/api/runs";
+import { fetchRunWallets, fetchRunSuspicious, fetchRunScores, type RunWallet } from "@/api/runs";
+import type { ExplanationDetail } from "@/types/explanation";
 import {
   resolveRiskTier,
   riskTierLabel,
   riskBadgeClassFromScore,
+  riskTierRank,
 } from "@/utils/riskTiers";
 
 function WalletListView() {
@@ -47,7 +49,10 @@ function WalletListView() {
     (async () => {
       try {
         const data = await fetchRunWallets(selectedRunId);
-        if (!cancelled) setWallets(data);
+        if (!cancelled) {
+          data.sort((a, b) => riskTierRank(b.risk_level) - riskTierRank(a.risk_level));
+          setWallets(data);
+        }
       } catch {
         if (!cancelled) setWallets([]);
       } finally {
@@ -102,7 +107,6 @@ function WalletListView() {
                 <thead>
                   <tr className="border-b border-[var(--color-aegis-border)] bg-[#060810]/80 text-left">
                     <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">Wallet</th>
-                    <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">Risk Score</th>
                     <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">Risk Level</th>
                     <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">Suspicious TXs</th>
                     <th className="px-4 py-3 font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">Clusters</th>
@@ -122,9 +126,6 @@ function WalletListView() {
                           {w.wallet_address.length > 16
                             ? `${w.wallet_address.slice(0, 8)}…${w.wallet_address.slice(-6)}`
                             : w.wallet_address}
-                        </td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-[#e6edf3]">
-                          {w.risk_score.toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(w.risk_score, tierConfig, w.risk_level)}`}>
@@ -173,17 +174,84 @@ function WalletListView() {
 }
 
 function WalletDetailView({ address }: { address: string }) {
-  const { wallet, loading, error } = useWallet(address);
+  const { wallet, loading: wLoading, error } = useWallet(address);
+  const { runs } = useRunContext();
+
+  const completedRuns = useMemo(
+    () => runs.filter((r) => r.status === "completed"),
+    [runs]
+  );
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedRunId && completedRuns.length > 0) {
+      setSelectedRunId(completedRuns[0].id);
+    }
+  }, [completedRuns, selectedRunId]);
+
+  const [walletTxs, setWalletTxs] = useState<any[]>([]);
+  const [explanation, setExplanation] = useState<ExplanationDetail | null>(null);
+  const [uniqueHeuristics, setUniqueHeuristics] = useState<number[]>([]);
+  const [walletScore, setWalletScore] = useState<any>(null);
+  const [loadingContext, setLoadingContext] = useState(false);
+
+  useEffect(() => {
+    if (!wallet || !selectedRunId) return;
+    let cancelled = false;
+    setLoadingContext(true);
+    (async () => {
+      try {
+        const [sus, scores] = await Promise.all([
+          fetchRunSuspicious(selectedRunId),
+          fetchRunScores(selectedRunId),
+        ]);
+        if (!cancelled) {
+          const filtered = sus.filter(
+            (t) => t.sender_wallet === address || t.receiver_wallet === address
+          );
+          setWalletTxs(filtered);
+
+          const matchedScore = scores.find(
+            (s: any) =>
+              s.transaction_id === address ||
+              s.sender_wallet === address ||
+              s.receiver_wallet === address
+          );
+          setWalletScore(matchedScore ?? null);
+          const summary = matchedScore?.explanation_summary as string | null | undefined;
+          setExplanation(summary ? { summary } : null);
+
+          // We use heuristic_triggered instead of rebuilding logic. It is array of IDs.
+          const heuristics = filtered.flatMap((t: any) => t.heuristic_triggered || []);
+          setUniqueHeuristics([...new Set(heuristics)]);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoadingContext(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [wallet, selectedRunId, address]);
+
+  const loading = wLoading || loadingContext;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
-          Wallet investigation
-        </h1>
-        <p className="font-data text-sm text-[var(--color-aegis-muted)]">
-          Address, flow timeline, risk tier, heuristic badges
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
+            Wallet investigation
+          </h1>
+          <p className="font-data text-sm text-[var(--color-aegis-muted)]">
+            Address, flow timeline, risk tier, heuristic badges
+          </p>
+        </div>
+        <RunSelectorDropdown
+          runs={runs}
+          selectedRunId={selectedRunId}
+          onSelect={setSelectedRunId}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
@@ -222,9 +290,9 @@ function WalletDetailView({ address }: { address: string }) {
                     Transaction history
                   </h2>
                 </div>
-                <FlowTimeline transactions={[]} />
+                <FlowTimeline transactions={walletTxs} />
               </div>
-              <ExplanationPanel transactionId={address} explanation={null} />
+              <ExplanationPanel transactionId={address} explanation={explanation} />
             </>
           )}
         </div>
@@ -243,8 +311,8 @@ function WalletDetailView({ address }: { address: string }) {
           {!loading && !error && wallet && (
             <WalletDetailPanel
               wallet={wallet}
-              score={null}
-              triggeredHeuristicIds={[]}
+              score={walletScore}
+              triggeredHeuristicIds={uniqueHeuristics}
               heuristicExplanations={{}}
             />
           )}

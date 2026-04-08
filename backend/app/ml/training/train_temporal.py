@@ -162,7 +162,7 @@ def _train_lstm(X_train, y_train, X_val, y_val, input_dim: int, device: torch.de
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
                 wait = 0
             else:
-                wait += 5
+                wait += 1
                 if wait >= PATIENCE:
                     logger.info("Early stopping at epoch %d", epoch)
                     break

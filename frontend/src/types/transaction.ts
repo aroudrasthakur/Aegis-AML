@@ -14,6 +14,7 @@ export interface Transaction {
   created_at: string;
   /** Present when transaction is joined with scoring for tables / charts */
   risk_score?: number | null;
+  risk_level?: string | null;
   heuristics_count?: number | null;
   /** Primary typology tag for queue display */
   typology_tag?: string | null;

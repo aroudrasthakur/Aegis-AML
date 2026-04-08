@@ -126,9 +126,10 @@ class GraphLens:
         data = data.to(device)
         self.model.eval()
         with torch.no_grad():
-            logits = self.model(data.x, data.edge_index)
-            probs = F.softmax(logits, dim=1)
             embeddings = self.model.get_embeddings(data.x, data.edge_index)
+            x_drop = F.dropout(embeddings, p=self.model.dropout_p, training=self.model.training)
+            logits = self.model.conv2(x_drop, data.edge_index)
+            probs = F.softmax(logits, dim=1)
         inv_map = {v: k for k, v in self.node_mapping.items()}
         return {
             "graph_score": probs[:, 1].cpu().numpy(),

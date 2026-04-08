@@ -70,6 +70,7 @@ export function mapEnrichedSuspiciousToQueueRow(
     label_source: t.label_source ?? null,
     created_at: "",
     risk_score: t.meta_score,
+    risk_level: t.risk_level,
     heuristics_count: t.heuristic_triggered_count ?? null,
     typology_tag:
       t.typology ?? t.heuristic_top_typology ?? (tier ? riskTierLabel(tier) : undefined),

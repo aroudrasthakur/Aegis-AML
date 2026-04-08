@@ -17,3 +17,26 @@ export async function downloadReport(reportId: string) {
   });
   return data;
 }
+
+export interface SarGenerationResponse {
+  sar_id: string;
+  report_id: string;
+  case_id: string;
+  download_url: string;
+  status: string;
+  generated_at: string;
+}
+
+export async function generateSar(reportId: string) {
+  const { data } = await client.post<SarGenerationResponse>(
+    `/reports/${reportId}/generate-sar`,
+  );
+  return data;
+}
+
+export async function downloadSar(sarId: string) {
+  const { data } = await client.get(`/reports/sar/${sarId}/download`, {
+    responseType: "blob",
+  });
+  return data;
+}

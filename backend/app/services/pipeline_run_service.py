@@ -19,6 +19,7 @@ from app.services.scoring_service import get_pipeline
 from app.ml.typology_taxonomy import infer_cluster_typology
 from app.utils.graph_utils import graph_to_cytoscape
 from app.utils.logger import get_logger
+from app.utils.risk_levels import level_from_score
 
 logger = get_logger(__name__)
 
@@ -293,24 +294,8 @@ async def execute_pipeline_run(run_id: str, frames: list[pd.DataFrame]) -> None:
 
         # ---- 6. Identify suspicious transactions -----------------------------
         threshold = _load_suspicious_threshold()
-        suspicious = [
-            r for r in results
-            if (r.get("meta_score") or 0) >= threshold
-            or r.get("risk_level") in ("medium", "high")
-        ]
-        # Demo / evaluation CSVs: optional ``label`` column marking ground-truth suspicious rows.
-        _seen_ids = {str(s.get("transaction_id", "")) for s in suspicious}
-        by_id = {str(r.get("transaction_id", "")): r for r in results}
-        for tx in transactions_dicts:
-            if str(tx.get("label", "")).strip().lower() != "suspicious":
-                continue
-            tid = str(tx.get("transaction_id") or tx.get("id") or "")
-            if not tid or tid in _seen_ids:
-                continue
-            row = by_id.get(tid)
-            if row:
-                suspicious.append(row)
-                _seen_ids.add(tid)
+        tx_by_id = {str(t.get("transaction_id") or t.get("id", "")): t for t in transactions_dicts}
+        suspicious = _collect_suspicious_transactions(results, threshold, tx_by_id)
         logger.info(
             "Run %s: %d/%d transactions flagged suspicious (decision_threshold=%.6f)",
             run_id, len(suspicious), len(results), threshold,
@@ -682,6 +667,7 @@ def _build_report(
             "label": cr.get("label"),
             "typology": cr.get("typology"),
             "risk_score": cr.get("risk_score"),
+            "risk_level": level_from_score(cr.get("risk_score")),
             "wallet_count": cr.get("wallet_count"),
             "tx_count": cr.get("tx_count"),
             "total_amount": cr.get("total_amount"),

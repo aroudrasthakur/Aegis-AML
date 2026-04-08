@@ -1,36 +1,32 @@
 import { Loader2, Network } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNetworkCases } from "@/hooks/useNetworkCases";
 import CaseReportCard from "@/components/CaseReportCard";
 import NetworkGraph from "@/components/NetworkGraph";
+import { fetchNetworkGraph } from "@/api/networks";
 import type { CytoscapeElement } from "@/types/graph";
-
-function previewForCase(id: string): CytoscapeElement[] {
-  const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return [
-    { data: { id: `${id}-a`, label: "A", color: "#00e5a0" } },
-    { data: { id: `${id}-b`, label: "B", color: "#7c5cfc" } },
-    { data: { id: `${id}-c`, label: "C", color: "#f59e0b" } },
-    {
-      data: {
-        id: `${id}-e1`,
-        source: `${id}-a`,
-        target: `${id}-b`,
-        weight: 100000 + seed * 100,
-      },
-    },
-    {
-      data: {
-        id: `${id}-e2`,
-        source: `${id}-b`,
-        target: `${id}-c`,
-        weight: 50000,
-      },
-    },
-  ];
-}
 
 export default function NetworkCasesPage() {
   const { cases, loading, error } = useNetworkCases();
+  const [graphPreviews, setGraphPreviews] = useState<Record<string, CytoscapeElement[]>>({});
+
+  useEffect(() => {
+    if (!cases.length) return;
+    cases.forEach(async (c) => {
+      try {
+        const result = await fetchNetworkGraph(c.id);
+        if (result?.elements) {
+          setGraphPreviews(prev => ({
+            ...prev,
+            [c.id]: result.elements
+          }));
+        }
+      } catch (err) {
+        // Silently ignore loading errors for previews, they will just appear empty
+        console.warn(`Failed to load graph preview for case ${c.id}`);
+      }
+    });
+  }, [cases]);
 
   return (
     <div className="space-y-6">
@@ -81,8 +77,8 @@ export default function NetworkCasesPage() {
         <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {cases.map((c) => (
             <li key={c.id} className="space-y-3">
-              <div className="overflow-hidden rounded-xl border border-[var(--color-aegis-border)]">
-                <NetworkGraph elements={previewForCase(c.id)} minHeight={200} />
+              <div className="overflow-hidden rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117]">
+                <NetworkGraph elements={graphPreviews[c.id] || []} minHeight={200} />
               </div>
               <CaseReportCard case={c} />
             </li>

@@ -77,7 +77,10 @@ class BehavioralLens:
             with torch.no_grad():
                 tensor = torch.FloatTensor(X).to(device)
                 recon = self.autoencoder(tensor)
-                anomaly_score = ((tensor - recon) ** 2).mean(dim=1).cpu().numpy()
+                mse = ((tensor - recon) ** 2).mean(dim=1).cpu().numpy()
+                threshold = getattr(self, "anomaly_threshold", 1.0)
+                if threshold <= 0: threshold = 1.0
+                anomaly_score = np.clip(mse / threshold, 0.0, 1.0)
         return {"behavioral_score": behavioral_score, "behavioral_anomaly_score": anomaly_score}
 
     def load(self, xgb_path: str, ae_path: str):
@@ -96,6 +99,7 @@ class BehavioralLens:
             self._device = resolve_torch_device()
             state = torch.load(ae_p, map_location=self._device, weights_only=True)
             input_dim = state.get("input_dim", 32)
+            self.anomaly_threshold = state.get("anomaly_threshold", 1.0)
             self.autoencoder = BehavioralAutoencoder(input_dim)
             self.autoencoder.load_state_dict(state["model_state_dict"])
             self.autoencoder.to(self._device)

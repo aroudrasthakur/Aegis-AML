@@ -7,6 +7,8 @@ import RunSelectorDropdown from "@/components/RunSelectorDropdown";
 import type { FlowCluster } from "@/types/flowExplorer";
 import type { RunCluster } from "@/types/run";
 import { useRunContext } from "@/contexts/useRunContext";
+import { useThresholds } from "@/contexts/ThresholdProvider";
+import { resolveRiskTier, riskTierLabel } from "@/utils/riskTiers";
 import {
   fetchClusterGraph,
   fetchRunClusters,
@@ -55,6 +57,7 @@ const NO_COMPLETED_RUNS_CLUSTER: FlowCluster = {
 export default function FlowExplorerPage() {
   const navigate = useNavigate();
   const { runs } = useRunContext();
+  const { config: tierConfig } = useThresholds();
 
   const completedRuns = useMemo(
     () => runs.filter((r) => r.status === "completed"),
@@ -278,7 +281,7 @@ export default function FlowExplorerPage() {
               className="font-data text-[22px] font-semibold tabular-nums"
               style={{ color: cluster.riskColor }}
             >
-              {(cluster.risk * 100).toFixed(0)}%
+              {cluster.riskLabel}
             </span>
             <span
               className="rounded-[6px] border px-2 py-0.5 font-data text-[10px]"
@@ -458,7 +461,10 @@ export default function FlowExplorerPage() {
           <p className="text-[#e6edf3]">{hover.label}</p>
           <p className="text-[#9aa7b8]">{hover.type}</p>
           <p className="tabular-nums text-[#34d399]">
-            Risk {(hover.risk * 100).toFixed(0)}%
+            Risk {(() => {
+              const tier = resolveRiskTier(hover.risk, tierConfig, null);
+              return tier ? riskTierLabel(tier) : "Unknown";
+            })()}
           </p>
         </div>
       )}

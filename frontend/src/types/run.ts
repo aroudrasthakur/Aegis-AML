@@ -37,6 +37,7 @@ export interface RunCluster {
   label: string | null;
   typology: string | null;
   risk_score: number;
+  risk_level?: string;
   total_amount: number;
   wallet_count: number;
   tx_count: number;
@@ -102,6 +103,7 @@ export interface RunReportContent {
     label: string;
     typology: string;
     risk_score: number;
+    risk_level?: string;
     wallet_count: number;
     tx_count: number;
     total_amount: number;

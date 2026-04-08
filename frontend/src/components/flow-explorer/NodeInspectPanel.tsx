@@ -82,7 +82,7 @@ export default function NodeInspectPanel({
         );
         if (match) {
           setNarrative(
-            `Score: ${match.meta_score?.toFixed(3)} | Risk: ${match.risk_level} | Typology: ${match.typology ?? "—"}`,
+            `Risk: ${match.risk_level} | Typology: ${match.typology ?? "—"}`,
           );
         }
       } catch {
@@ -126,9 +126,6 @@ export default function NodeInspectPanel({
             <div>
               <p className="font-data text-[10px] uppercase tracking-wide text-[#6b7c90]">Risk</p>
               <div className="mt-0.5 flex items-center gap-2">
-                <span className="font-mono text-sm tabular-nums text-[#e6edf3]">
-                  {(nodeRisk * 100).toFixed(0)}%
-                </span>
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-medium ${tierBadge}`}>
                   {tierLabel}
                 </span>
@@ -214,7 +211,7 @@ export default function NodeInspectPanel({
                       {t.transaction_id.slice(0, 16)}…
                     </span>
                     <span className="font-data text-[9px] tabular-nums text-[#f87171]">
-                      {t.meta_score.toFixed(2)} · {t.typology ?? t.risk_level}
+                      {t.typology ?? t.risk_level}
                     </span>
                   </li>
                 ))}
@@ -232,3 +229,4 @@ export default function NodeInspectPanel({
     </div>
   );
 }
+

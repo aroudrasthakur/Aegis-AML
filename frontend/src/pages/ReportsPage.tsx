@@ -7,11 +7,19 @@ import {
   BarChart3,
   Shield,
   Loader2,
+  FileWarning,
+  FileDown,
 } from "lucide-react";
 import { useRunContext } from "@/contexts/useRunContext";
 import { useThresholds } from "@/contexts/ThresholdProvider";
 import { fetchRunClusters, fetchRunReport } from "@/api/runs";
-import type { PipelineRun, RunCluster, RunReport, RunReportContent } from "@/types/run";
+import { downloadSar, generateSar } from "@/api/reports";
+import type {
+  PipelineRun,
+  RunCluster,
+  RunReport,
+  RunReportContent,
+} from "@/types/run";
 import type { RiskTierConfig } from "@/utils/riskTiers";
 import {
   resolveRiskTier,
@@ -19,6 +27,8 @@ import {
   riskTierLabel,
 } from "@/utils/riskTiers";
 import ReportSummaryPanel from "@/components/ReportSummaryPanel";
+import SarDownloadDialog from "@/components/SarDownloadDialog";
+import { useToast } from "@/hooks/useToast";
 
 export default function ReportsPage() {
   const { runs, selectRun } = useRunContext();
@@ -48,13 +58,17 @@ export default function ReportsPage() {
   }, [selectedRunId, selectRun]);
 
   if (selectedRunId && report && !loading) {
-    return <ReportDetail report={report} onBack={() => setSelectedRunId(null)} />;
+    return (
+      <ReportDetail report={report} onBack={() => setSelectedRunId(null)} />
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-[#e6edf3]">Reports</h1>
+        <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
+          Reports
+        </h1>
         <p className="font-data text-sm text-[var(--color-aegis-muted)]">
           One report per completed pipeline run
         </p>
@@ -75,7 +89,9 @@ export default function ReportsPage() {
       {!loading && completedRuns.length === 0 && (
         <div className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] px-4 py-16 text-center">
           <FileText className="mx-auto mb-3 h-10 w-10 text-[var(--color-aegis-muted)]" />
-          <p className="font-display font-medium text-[#c8d4e0]">No reports yet</p>
+          <p className="font-display font-medium text-[#c8d4e0]">
+            No reports yet
+          </p>
           <p className="mx-auto mt-2 max-w-sm text-sm text-[#9aa7b8]">
             Upload CSVs and run the pipeline to generate a report.
           </p>
@@ -107,7 +123,13 @@ export default function ReportsPage() {
   );
 }
 
-function RunRow({ run, onOpen }: { run: PipelineRun; onOpen: (id: string) => void }) {
+function RunRow({
+  run,
+  onOpen,
+}: {
+  run: PipelineRun;
+  onOpen: (id: string) => void;
+}) {
   return (
     <tr
       className="cursor-pointer hover:bg-[#060810]/90"
@@ -117,9 +139,7 @@ function RunRow({ run, onOpen }: { run: PipelineRun; onOpen: (id: string) => voi
         {run.label || `Run ${run.id.slice(0, 8)}`}
       </td>
       <td className="px-4 py-3 text-[var(--color-aegis-muted)]">
-        {run.completed_at
-          ? new Date(run.completed_at).toLocaleString()
-          : "—"}
+        {run.completed_at ? new Date(run.completed_at).toLocaleString() : "—"}
       </td>
       <td className="px-4 py-3 tabular-nums">{run.total_txns}</td>
       <td className="px-4 py-3 tabular-nums text-[#f87171]">
@@ -141,9 +161,14 @@ function ReportDetail({
   onBack: () => void;
 }) {
   const { config: tierConfig } = useThresholds();
+  const toast = useToast();
   const c: RunReportContent = report.content;
   const s = c.summary;
   const [liveClusters, setLiveClusters] = useState<RunCluster[] | null>(null);
+  const [isGeneratingSar, setIsGeneratingSar] = useState(false);
+  const [isDownloadingSar, setIsDownloadingSar] = useState(false);
+  const [latestSarId, setLatestSarId] = useState<string | null>(null);
+  const [showSarDialog, setShowSarDialog] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,8 +189,64 @@ function ReportDetail({
     return c.cluster_findings.map((cl) => ({
       ...cl,
       risk_score: byId.get(cl.cluster_id)?.risk_score ?? cl.risk_score,
+      risk_level: byId.get(cl.cluster_id)?.risk_level ?? cl.risk_level,
     }));
   }, [c.cluster_findings, liveClusters]);
+
+  const handleDownloadSar = useCallback(
+    async (sarId: string) => {
+      setIsDownloadingSar(true);
+      try {
+        const blob = await downloadSar(sarId);
+        triggerPdfDownload(blob, `sar_${sarId}.pdf`);
+        toast.push({
+          variant: "success",
+          title: "SAR Download Started",
+          description: "Your SAR PDF is downloading now.",
+        });
+      } catch {
+        toast.push({
+          variant: "error",
+          title: "SAR Download Failed",
+          description: "We could not download the SAR PDF. Please try again.",
+        });
+      } finally {
+        setIsDownloadingSar(false);
+      }
+    },
+    [toast],
+  );
+
+  const handleGenerateSar = useCallback(async () => {
+    if (isGeneratingSar) return;
+    setIsGeneratingSar(true);
+    toast.push({
+      variant: "info",
+      title: "Generating SAR",
+      description: "Building the Suspicious Activity Report PDF...",
+    });
+
+    try {
+      const sar = await generateSar(report.id);
+      setLatestSarId(sar.sar_id);
+      toast.push({
+        variant: "success",
+        title: "SAR Generated",
+        description: "PDF is ready for download.",
+      });
+
+      // Show the custom download dialog
+      setShowSarDialog(true);
+    } catch {
+      toast.push({
+        variant: "error",
+        title: "SAR Generation Failed",
+        description: "We could not generate the SAR PDF for this report.",
+      });
+    } finally {
+      setIsGeneratingSar(false);
+    }
+  }, [isGeneratingSar, report.id, toast]);
 
   return (
     <div className="space-y-6">
@@ -177,11 +258,59 @@ function ReportDetail({
         <ArrowLeft className="h-4 w-4" /> Back to reports
       </button>
 
-      <div>
-        <h1 className="font-display text-2xl font-bold text-[#e6edf3]">{report.title}</h1>
-        <p className="font-data text-sm text-[var(--color-aegis-muted)]">
-          Generated {new Date(report.generated_at).toLocaleString()}
-        </p>
+      {/* SAR Download Dialog */}
+      {latestSarId && (
+        <SarDownloadDialog
+          open={showSarDialog}
+          onClose={() => setShowSarDialog(false)}
+          onDownload={async () => {
+            await handleDownloadSar(latestSarId);
+            setShowSarDialog(false);
+          }}
+          sarId={latestSarId}
+          isDownloading={isDownloadingSar}
+        />
+      )}
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-[#e6edf3]">
+            {report.title}
+          </h1>
+          <p className="font-data text-sm text-[var(--color-aegis-muted)]">
+            Generated {new Date(report.generated_at).toLocaleString()}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {latestSarId && (
+            <button
+              type="button"
+              onClick={() => setShowSarDialog(true)}
+              disabled={isDownloadingSar}
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-aegis-border)] bg-[#060810] px-3 py-2 font-data text-xs text-[#e6edf3] hover:border-[#34d399]/35 disabled:opacity-50"
+            >
+              {isDownloadingSar ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4" />
+              )}
+              {isDownloadingSar ? "Downloading..." : "Download SAR PDF"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleGenerateSar}
+            disabled={isGeneratingSar}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#34d399]/35 bg-[#34d399]/10 px-3 py-2 font-data text-xs text-[#6ee7b7] disabled:opacity-50"
+          >
+            {isGeneratingSar ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileWarning className="h-4 w-4" />
+            )}
+            {isGeneratingSar ? "Generating SAR..." : "Generate SAR PDF"}
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -214,6 +343,7 @@ function ReportDetail({
                   <span className="text-[#6b7c90]">·</span>
                   <ClusterRiskMeta
                     score={cl.risk_score}
+                    backendLevel={cl.risk_level ?? null}
                     tierConfig={tierConfig}
                   />
                 </div>
@@ -264,7 +394,6 @@ function ReportDetail({
               <thead>
                 <tr className="border-b border-[var(--color-aegis-border)] text-left font-data text-[11px] uppercase tracking-wide text-[var(--color-aegis-muted)]">
                   <th className="px-3 py-2">Transaction</th>
-                  <th className="px-3 py-2">Score</th>
                   <th className="px-3 py-2">Risk</th>
                   <th className="px-3 py-2">Typology</th>
                   <th className="px-3 py-2">Behav.</th>
@@ -282,9 +411,6 @@ function ReportDetail({
                         ? `${t.transaction_id.slice(0, 16)}…`
                         : t.transaction_id}
                     </td>
-                    <td className="px-3 py-2 tabular-nums font-medium text-[#f87171]">
-                      {t.meta_score.toFixed(4)}
-                    </td>
                     <td className="px-3 py-2">
                       <RiskTierBadge
                         score={t.meta_score}
@@ -292,12 +418,24 @@ function ReportDetail({
                         backendLevel={t.risk_level}
                       />
                     </td>
-                    <td className="px-3 py-2 text-[11px]">{t.typology ?? "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{t.behavioral_score.toFixed(3)}</td>
-                    <td className="px-3 py-2 tabular-nums">{t.graph_score.toFixed(3)}</td>
-                    <td className="px-3 py-2 tabular-nums">{t.entity_score.toFixed(3)}</td>
-                    <td className="px-3 py-2 tabular-nums">{t.temporal_score.toFixed(3)}</td>
-                    <td className="px-3 py-2 tabular-nums">{t.offramp_score.toFixed(3)}</td>
+                    <td className="px-3 py-2 text-[11px]">
+                      {t.typology ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {t.behavioral_score.toFixed(3)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {t.graph_score.toFixed(3)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {t.entity_score.toFixed(3)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {t.temporal_score.toFixed(3)}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {t.offramp_score.toFixed(3)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -311,13 +449,14 @@ function ReportDetail({
 
 function ClusterRiskMeta({
   score,
+  backendLevel,
   tierConfig,
 }: {
   score: number;
+  backendLevel?: string | null;
   tierConfig: RiskTierConfig | null;
 }) {
-  const tier = resolveRiskTier(score, tierConfig, null);
-  const pct = `${(Math.min(1, Math.max(0, score)) * 100).toFixed(1)}%`;
+  const tier = resolveRiskTier(score, tierConfig, backendLevel);
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {tier ? (
@@ -331,7 +470,6 @@ function ClusterRiskMeta({
           —
         </span>
       )}
-      <span className="tabular-nums text-[#c8d4e0]">{pct}</span>
     </span>
   );
 }
@@ -409,3 +547,13 @@ function Section({
   );
 }
 
+function triggerPdfDownload(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
+}

@@ -28,7 +28,7 @@ function SubScoreRow({
     return (
       <div className="flex items-center justify-between gap-2 font-data text-sm">
         <span className="text-[var(--color-aegis-muted)]">{label}</span>
-        <span className="text-[#5c6b7f]">—</span>
+        <span className="text-[#5c6b7f]">-</span>
       </div>
     );
   }
@@ -70,7 +70,8 @@ export default function WalletDetailPanel({
   }
 
   const risk = score?.risk_score ?? null;
-  const riskPct = risk == null ? 0 : Math.min(100, Math.max(0, risk * 100));
+  const tier = resolveRiskTier(risk, tierConfig);
+  const tierText = tier ? riskTierLabel(tier).toUpperCase() : "UNSCORED";
   const netFlow = wallet.total_in - wallet.total_out;
 
   return (
@@ -86,23 +87,20 @@ export default function WalletDetailPanel({
       )}
 
       <div className="mt-4 inline-flex rounded border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-1 font-data text-[10px] font-medium uppercase tracking-wide text-[var(--color-aegis-amber)]">
-        Risk tier · {(() => {
-          const tier = resolveRiskTier(risk, tierConfig);
-          return tier ? riskTierLabel(tier).toUpperCase() : "UNSCORED";
-        })()}
+        Risk tier · {tierText}
       </div>
 
       <dl className="mt-6 space-y-3 font-data text-sm">
         <div className="flex justify-between gap-2">
           <dt className="text-[var(--color-aegis-muted)]">First seen</dt>
           <dd className="text-right text-[#e6edf3]">
-            {wallet.first_seen ? formatDate(wallet.first_seen) : "—"}
+            {wallet.first_seen ? formatDate(wallet.first_seen) : "-"}
           </dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-[var(--color-aegis-muted)]">Last seen</dt>
           <dd className="text-right text-[#e6edf3]">
-            {wallet.last_seen ? formatDate(wallet.last_seen) : "—"}
+            {wallet.last_seen ? formatDate(wallet.last_seen) : "-"}
           </dd>
         </div>
         <div className="flex justify-between gap-2">
@@ -127,28 +125,13 @@ export default function WalletDetailPanel({
 
       <div className="mt-8">
         <h3 className="font-data text-xs font-medium uppercase tracking-wide text-[var(--color-aegis-muted)]">
-          Risk score
+          Risk level
         </h3>
-        {risk == null ? (
-          <p className="mt-2 font-data text-sm text-[var(--color-aegis-muted)]">
-            No score available.
-          </p>
-        ) : (
-          <>
-            <div className="mt-2 flex items-baseline justify-between gap-2">
-              <span className="font-display text-2xl font-semibold tabular-nums text-[#e6edf3]">
-                {(risk * 100).toFixed(0)}%
-              </span>
-              <span className="font-data text-xs text-[var(--color-aegis-muted)]">0–100</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#060810]">
-              <div
-                className={`h-full rounded-full ${riskBarClassFromScore(risk, tierConfig)}`}
-                style={{ width: `${riskPct}%` }}
-              />
-            </div>
-          </>
-        )}
+        <div className="mt-2">
+          <span className="inline-flex rounded-full border border-[var(--color-aegis-border)] bg-[#060810] px-2.5 py-1 text-[11px] font-medium text-[#e6edf3]">
+            {tierText}
+          </span>
+        </div>
       </div>
 
       {score && (

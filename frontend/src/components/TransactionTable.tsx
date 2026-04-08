@@ -4,12 +4,13 @@ import type { TransactionQueueRow } from "@/types/transaction";
 import {
   formatCurrency,
   formatDate,
-  formatRiskLevel,
-  formatScore4,
   truncateAddress,
 } from "@/utils/formatters";
 import { useThresholds } from "@/contexts/ThresholdProvider";
 import {
+  resolveRiskTier,
+  riskTierLabel,
+  riskTierRank,
   riskBarClassFromScore,
   riskBadgeClassFromScore,
 } from "@/utils/riskTiers";
@@ -33,11 +34,10 @@ type SortKey =
   | "sender_wallet"
   | "receiver_wallet"
   | "amount"
-  | "risk_score"
+  | "risk_level"
   | "heuristics_count"
   | "timestamp"
   | "typology_tag";
-
 
 export default function TransactionTable({
   transactions,
@@ -52,13 +52,19 @@ export default function TransactionTable({
   const thClass = `font-data text-[11px] font-medium uppercase tracking-wide text-[var(--color-aegis-muted)] ${cellX} ${cellY}`;
   const { config: tierConfig } = useThresholds();
   const [sortKey, setSortKey] = useState<SortKey>(
-    variant === "queue" ? "risk_score" : "timestamp",
+    variant === "queue" ? "risk_level" : "timestamp",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
     return [...transactions].sort((a, b) => {
+      if (sortKey === "risk_level") {
+        const aTier = resolveRiskTier(a.risk_score ?? null, tierConfig, a.risk_level);
+        const bTier = resolveRiskTier(b.risk_score ?? null, tierConfig, b.risk_level);
+        return (riskTierRank(aTier) - riskTierRank(bTier)) * dir;
+      }
+
       const av = a[sortKey];
       const bv = b[sortKey];
       if (av == null && bv == null) return 0;
@@ -69,14 +75,14 @@ export default function TransactionTable({
       }
       return String(av).localeCompare(String(bv)) * dir;
     });
-  }, [transactions, sortKey, sortDir]);
+  }, [transactions, sortKey, sortDir, tierConfig]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "timestamp" || key === "risk_score" ? "desc" : "asc");
+      setSortDir(key === "timestamp" || key === "risk_level" ? "desc" : "asc");
     }
   }
 
@@ -125,11 +131,9 @@ export default function TransactionTable({
               {variant === "queue" ? (
                 <>
                   <SortHeader label="Transaction" columnKey="transaction_id" />
-                  <SortHeader label="Score" columnKey="risk_score" />
+                  <SortHeader label="Risk Level" columnKey="risk_level" />
                   <SortHeader label="Typology" columnKey="typology_tag" />
-                  <th className={thClass}>
-                    Lens
-                  </th>
+                  <th className={thClass}>Lens</th>
                 </>
               ) : (
                 <>
@@ -137,7 +141,7 @@ export default function TransactionTable({
                   <SortHeader label="Sender" columnKey="sender_wallet" />
                   <SortHeader label="Receiver" columnKey="receiver_wallet" />
                   <SortHeader label="Amount" columnKey="amount" />
-                  <SortHeader label="Risk" columnKey="risk_score" />
+                  <SortHeader label="Risk Level" columnKey="risk_level" />
                   <SortHeader label="Heuristics" columnKey="heuristics_count" />
                   <SortHeader label="Timestamp" columnKey="timestamp" />
                 </>
@@ -157,6 +161,7 @@ export default function TransactionTable({
             ) : (
               sorted.map((tx) => {
                 const risk = tx.risk_score ?? null;
+                const tier = resolveRiskTier(risk, tierConfig, tx.risk_level);
                 const defaultLens = {
                   behavioral: 0.2,
                   graph: 0.2,
@@ -198,18 +203,17 @@ export default function TransactionTable({
                           {tx.display_ref ?? truncateAddress(tx.transaction_id, 10)}
                         </div>
                         <div className="mt-0.5 font-mono text-[10px] text-[var(--color-aegis-muted)]">
-                          {truncateAddress(tx.transaction_id, 5)}…
-                          {tx.transaction_id.slice(-3)}
+                          {truncateAddress(tx.transaction_id, 5)}...{tx.transaction_id.slice(-3)}
                         </div>
                       </td>
                       <td className={tdC}>
-                        <div className="flex flex-col gap-1.5 min-w-[100px]">
-                          <span className="font-mono text-sm tabular-nums text-[#e6edf3]">
-                            {risk == null ? "—" : risk.toFixed(2)}
+                        <div className="flex flex-col gap-1.5 min-w-[120px]">
+                          <span className={`inline-flex w-fit rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(risk, tierConfig, tx.risk_level)}`}>
+                            {tier ? riskTierLabel(tier) : "Unknown"}
                           </span>
                           <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-[#060810]">
                             <div
-                              className={`h-full rounded-full transition-all ${riskBarClassFromScore(risk, tierConfig)}`}
+                              className={`h-full rounded-full transition-all ${riskBarClassFromScore(risk, tierConfig, tx.risk_level)}`}
                               style={{
                                 width: `${Math.min(100, (risk ?? 0) * 100)}%`,
                               }}
@@ -219,7 +223,7 @@ export default function TransactionTable({
                       </td>
                       <td className={tdC}>
                         <span className="rounded-full border border-[var(--color-aegis-border)] bg-[#060810] px-2.5 py-0.5 text-[10px] text-[#a5b4c8]">
-                          {(tx.typology_tag ?? "—").replace(/^T-\d+\s*/, "")}
+                          {(tx.typology_tag ?? "-").replace(/^T-\d+\s*/, "")}
                         </span>
                       </td>
                       <td className={tdC}>
@@ -228,12 +232,6 @@ export default function TransactionTable({
                     </tr>
                   );
                 }
-
-                const riskMeta = formatRiskLevel(risk, tierConfig);
-                const riskLabel =
-                  risk == null
-                    ? "—"
-                    : `${riskMeta.label} (${formatScore4(risk)})`;
 
                 return (
                   <tr key={tx.id} {...rowProps}>
@@ -251,14 +249,14 @@ export default function TransactionTable({
                     </td>
                     <td className={tdC}>
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(risk, tierConfig)}`}
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium ${riskBadgeClassFromScore(risk, tierConfig, tx.risk_level)}`}
                       >
-                        {riskLabel}
+                        {tier ? riskTierLabel(tier) : "Unknown"}
                       </span>
                     </td>
                     <td className={tdC}>
                       <span className="inline-flex min-w-[2rem] justify-center rounded-md border border-[var(--color-aegis-border)] bg-[#060810] px-2 py-0.5 text-[11px] font-medium tabular-nums">
-                        {tx.heuristics_count ?? "—"}
+                        {tx.heuristics_count ?? "-"}
                       </span>
                     </td>
                     <td className={`${tdC} text-[var(--color-aegis-muted)]`}>

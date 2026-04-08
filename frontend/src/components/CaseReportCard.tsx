@@ -1,7 +1,7 @@
 import type { NetworkCase } from "@/types/network";
-import { formatCurrency, formatDate, formatNumber } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 import { useThresholds } from "@/contexts/ThresholdProvider";
-import { riskBarClassFromScore } from "@/utils/riskTiers";
+import { resolveRiskTier, riskTierLabel } from "@/utils/riskTiers";
 
 export interface CaseReportCardProps {
   case: NetworkCase;
@@ -10,20 +10,20 @@ export interface CaseReportCardProps {
 export default function CaseReportCard({ case: networkCase }: CaseReportCardProps) {
   const { config: tierConfig } = useThresholds();
   const risk = networkCase.risk_score ?? null;
-  const riskPct = risk == null ? 0 : Math.min(100, Math.max(0, risk * 100));
+  const tier = resolveRiskTier(risk, tierConfig, null);
 
   const excerptSource = networkCase.explanation ?? "";
   const excerpt =
     excerptSource.length > 200
-      ? `${excerptSource.slice(0, 200)}…`
+      ? `${excerptSource.slice(0, 200)}...`
       : excerptSource;
 
   const rangeStart = networkCase.start_time
     ? formatDate(networkCase.start_time)
-    : "—";
+    : "-";
   const rangeEnd = networkCase.end_time
     ? formatDate(networkCase.end_time)
-    : "—";
+    : "-";
 
   return (
     <article className="rounded-xl border border-[var(--color-aegis-border)] bg-[#0d1117] p-6 text-[#e6edf3]">
@@ -53,23 +53,11 @@ export default function CaseReportCard({ case: networkCase }: CaseReportCardProp
 
       <div className="mt-6">
         <div className="flex items-center justify-between gap-2 font-data text-sm">
-          <span className="text-[var(--color-aegis-muted)]">Risk score</span>
-          {risk == null ? (
-            <span className="text-[var(--color-aegis-muted)]">—</span>
-          ) : (
-            <span className="tabular-nums text-[#e6edf3]">
-              {formatNumber(risk, 2)}
-            </span>
-          )}
+          <span className="text-[var(--color-aegis-muted)]">Risk level</span>
+          <span className="tabular-nums text-[#e6edf3]">
+            {tier ? riskTierLabel(tier) : "Unknown"}
+          </span>
         </div>
-        {risk != null && (
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#060810]">
-            <div
-              className={`h-full rounded-full ${riskBarClassFromScore(risk, tierConfig)}`}
-              style={{ width: `${riskPct}%` }}
-            />
-          </div>
-        )}
       </div>
 
       <dl className="mt-6 grid gap-3 font-data text-sm sm:grid-cols-2">
@@ -77,14 +65,14 @@ export default function CaseReportCard({ case: networkCase }: CaseReportCardProp
           <dt className="text-[var(--color-aegis-muted)]">Total amount</dt>
           <dd className="mt-0.5 tabular-nums text-[#e6edf3]">
             {networkCase.total_amount == null
-              ? "—"
+              ? "-"
               : formatCurrency(networkCase.total_amount)}
           </dd>
         </div>
         <div>
           <dt className="text-[var(--color-aegis-muted)]">Time range</dt>
           <dd className="mt-0.5 text-[#c8d4e0]">
-            {rangeStart} → {rangeEnd}
+            {rangeStart} -&gt; {rangeEnd}
           </dd>
         </div>
       </dl>

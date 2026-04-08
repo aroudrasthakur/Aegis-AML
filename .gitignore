@@ -35,6 +35,8 @@ data/external/*
 # IDE
 .vscode/
 .idea/
+.kiro/
+.cursor/
 *.swp
 *.swo
 

@@ -216,14 +216,14 @@ class InferencePipeline:
         logger.info("Built wallet profiles for %d addresses", len(wallet_profiles))
 
         # --- 1. Batch feature extraction ---
-        nn = graph.number_of_nodes() if graph is not None else 0
+        n_nodes = graph.number_of_nodes() if graph is not None else 0
         gm: Literal["full", "none"] = "full"
         skip_above = settings.infer_skip_graph_global_metrics_above_nodes
-        if skip_above > 0 and nn > skip_above:
+        if skip_above > 0 and n_nodes > skip_above:
             gm = "none"
             logger.warning(
                 "Inference: %d graph nodes (threshold %d); skipping global centralities for speed",
-                nn, skip_above,
+                n_nodes, skip_above,
             )
 
         if progress_callback is not None:
@@ -231,7 +231,7 @@ class InferencePipeline:
                 progress_callback({
                     "phase": "batch_features",
                     "tx_total": n_tx,
-                    "graph_nodes": nn,
+                    "graph_nodes": n_nodes,
                     "global_metrics": gm,
                 })
             except Exception:
