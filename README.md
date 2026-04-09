@@ -335,8 +335,8 @@ Canonical cluster labels currently include:
 ### 1. Clone
 
 ```bash
-git clone <your-fork-url> Aegis-AML
-cd Aegis-AML
+git clone <your-fork-url> Cicada-AML
+cd Cicada-AML
 ```
 
 ### 2. Create one repo-root virtual environment
@@ -498,7 +498,7 @@ This behavior matters because it preserves analyst-relevant rows that a strict t
 ## Repo structure
 
 ```text
-Aegis-AML/
+Cicada-AML/
 |-- backend/
 |   |-- app/
 |   |   |-- api/
