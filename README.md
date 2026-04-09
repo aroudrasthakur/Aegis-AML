@@ -1,4 +1,4 @@
-# Aegis AML
+# Cicada AML
 
 **Repository for the Cicada AML application: a full-stack blockchain AML investigation platform built around heuristics-first detection, multi-lens ML scoring, clustering, and investigator-ready reporting.**
 
